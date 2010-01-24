@@ -1,0 +1,14 @@
+Source: duliback
+Section: editors
+Priority: extra
+Maintainer: Ardy Falls <ArdyFalls@gmail.com>
+Homepage: http://code.google.com/p/dupliback/
+Package: dupli.back
+Architecture: all
+Version:0.1.0
+Depends: python, python-glade2, python-gnome2, python-gnome2-extras, duplicity
+Description: dupli.back Backup software
+ dupli.back Backup software for Linux Originally based on 'flyback', which was based on Apple's 'Time Machine'. 
+ Dupli.back, is a full featured backup application built on top of the duplicity command line backup tool. It supports 
+ password encrypted backup, backing up on remote servers via ssh, backing up on Amazon Cloud S3 service & backing up on 
+ local and removable disks. 
