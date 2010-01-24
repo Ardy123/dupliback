@@ -1,7 +1,7 @@
 Source: duliback
 Section: editors
 Priority: extra
-Maintainer: Ardy Falls <ArdyFalls@gmail.org>
+Maintainer: Ardy Falls <ArdyFalls@gmail.com>
 Homepage: http://code.google.com/p/dupliback/
 Package: dupli.back
 Architecture: all
