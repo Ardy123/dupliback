@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=0.5.0
+Encoding=UTF-8
+Name=dupli.back Backup Manager
+Type=Application
+GenericName=Backup Utility
+Comment=Better than Apple's Time Machine for Linux
+Icon=/usr/share/icons/gnome/scalable/actions/stock_save.svg
+FilePattern=flyback;
+Exec=/usr/share/flyback/flyback.py
+Terminal=false
+StartupNotify=false
+Categories=Application;System;
+GenericName[en_GB]=Backup Utility
+
