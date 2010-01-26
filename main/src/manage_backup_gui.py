@@ -235,7 +235,7 @@ class GUI(object):
     
     # if no revisions exist, prompt user to run backup
     if not backup.get_revisions(self.uuid, self.host, self.path):
-      s = 'Welcome to Flyback!'
+      s = 'Welcome to dupli.back!'
       md = gtk.MessageDialog(None, gtk.DIALOG_DESTROY_WITH_PARENT, gtk.MESSAGE_INFO, gtk.BUTTONS_CLOSE, s)
       md.format_secondary_markup('This is a brand new (and currently empty) backup repository.  To fill it with data, please click the "backup" button in the upper-left corner.')
       md.run()

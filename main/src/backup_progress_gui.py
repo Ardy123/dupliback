@@ -4,7 +4,7 @@ import util
 class GUI(object):
     def takedownProgressBar(self):
         self.progressUpdater.cancel()
-        self.set_deletable(True)
+        self.main_window.set_deletable(True)
         self.done_button.set_sensitive(True)          
         return
         
