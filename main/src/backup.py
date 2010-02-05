@@ -1,53 +1,47 @@
 import os, pickle, sys, tempfile, traceback
 import uuid as uuidlib
-
 import settings
-import util
 
 UUID_GVFS = uuidlib.uuid5(uuidlib.NAMESPACE_DNS, 'gvfs.flyback.org')
 
 def get_known_backups():
-  backups = []
-  for uuid in get_all_devices():
-    path = get_mount_point_for_uuid(uuid)
-    if path:
-      fbdbs = [ x for x in os.listdir(path) if x.startswith('.flybackdb') ]
-      for fbdb in fbdbs:
-        try:
-          f = open( os.path.join(path, fbdb, 'flyback_properties.pickle') )
-          o = pickle.load(f)
-          f.close()
-          backups.append(o)
-          print 'discovered backup:', uuid, path
-        except:
-          print 'failed to read:', os.path.join(path, fbdb, 'flyback_properties.pickle')
-  return backups
+    backups = []
+    for uuid in get_all_devices():
+        path = get_mount_point_for_uuid(uuid)
+        if path:
+            fbdbs = [ x for x in os.listdir(path) if x.startswith('.flybackdb') ]
+            for fbdb in fbdbs:
+                try:
+                    f = open( os.path.join(path, fbdb, 'flyback_properties.pickle') )
+                    o = pickle.load(f)
+                    f.close()
+                    backups.append(o)
+                    print 'discovered backup:', uuid, path
+                except:
+                    print 'failed to read:', os.path.join(path, fbdb, 'flyback_properties.pickle')
+    return backups
 
   
-def is_dev_present(uuid):
-  # handle gfvs
-  for x,y in get_gvfs_devices_and_paths():
-    if uuid==x:
-      return True
-  # handle local devices
-  return os.path.exists( os.path.join( '/dev/disk/by-uuid/', uuid ) )
+def is_dev_present(uuid):  
+    for x in get_gvfs_devices_and_paths():
+        if uuid==x:
+            return True
+    return os.path.exists( os.path.join( '/dev/disk/by-uuid/', uuid ) )
   
-def get_device_type(uuid):
-  # handle gfvs
-  for x,y in get_gvfs_devices_and_paths():
-    if uuid==x:
-      return 'gvfs'
-  # handle local devices
-  if os.path.exists( os.path.join( '/dev/disk/by-uuid/', uuid ) ):
-    return 'local'
-  return None
+def get_device_type(uuid):  
+    for x in get_gvfs_devices_and_paths():
+        if uuid==x:
+            return 'gvfs'  
+    if os.path.exists( os.path.join( '/dev/disk/by-uuid/', uuid ) ):
+        return 'local'
+    return None
   
 def get_hostname():
-  import socket
-  return socket.gethostname()
+    import socket
+    return socket.gethostname()
   
 def get_gvfs_devices():
-  return [ x[0] for x in get_gvfs_devices_and_paths() ]
+    return [ x[0] for x in get_gvfs_devices_and_paths() ]
   
 def get_gvfs_devices_and_paths():
     l = []
@@ -63,43 +57,44 @@ def get_gvfs_devices_and_paths():
     return l
   
 def get_local_devices():
-  devices = [ os.path.basename(x) for x in os.listdir('/dev/disk/by-uuid/') ]
-  return devices
+    devices = [ os.path.basename(x) for x in os.listdir('/dev/disk/by-uuid/') ]
+    return devices
   
 def get_all_devices():
-  return get_local_devices() + get_gvfs_devices()
+    return get_local_devices() + get_gvfs_devices()
   
 def get_writable_devices():
-  writable_uuids = []
-  for uuid in get_all_devices():
-    path = get_mount_point_for_uuid(uuid)
-    if path:
-      try:
-        fn = os.path.join(path,'.flyback_write_test.txt')
-        f = open(fn, 'w')
-        f.write('delete me!')
-        f.close()
-        os.remove(fn)
-        writable_uuids.append(uuid)
-      except:
-        print 'could not write to:', path
-  return writable_uuids
+    writable_uuids = []
+    for uuid in get_all_devices():
+        path = get_mount_point_for_uuid(uuid)
+        if path:
+            try:
+                fn = os.path.join(path,'.flyback_write_test.txt')
+                f = open(fn, 'w')
+                f.write('delete me!')
+                f.close()
+                os.remove(fn)
+                writable_uuids.append(uuid)
+            except:
+                print 'could not write to:', path
+    return writable_uuids
   
 def test_backup_assertions(uuid, host, path, test_exists=True):
-  if not is_dev_present(uuid): 
-    print 'not is_dev_present("%s")' % uuid
-    return False
-  if not get_hostname()==host:
-    print 'get_hostname()!="%s"' % host
-    return False
-  if not os.path.exists(path):
-    print 'not os.path.exists("%s")' % path
-    return False
-  if test_exists:
-    if not os.path.exists( get_git_dir(uuid, host, path) ):
-      print 'not os.path.exists("%s")' % get_git_dir(uuid, host, path)
-      return False
-  return True
+    if not is_dev_present(uuid): 
+        print 'not is_dev_present("%s")' % uuid
+        return False
+    if not get_hostname() == host:
+        print 'get_hostname()!="%s"' % host
+        return False
+    if not os.path.exists(path):
+        print 'not os.path.exists("%s")' % path
+        return False
+    if test_exists:
+        if not os.path.exists(get_git_dir(uuid, host, path)):
+            print 'not os.path.exists("%s")' % get_git_dir(uuid, host, path)
+            return False
+    return True
+
 
 def get_dev_paths_for_uuid(uuid):
   dev_path = os.path.join( '/dev/disk/by-uuid/', uuid )
@@ -196,24 +191,22 @@ def init_backup(uuid, host, path):
   
 
 def backup(uuid, host, path):
-  assert test_backup_assertions(uuid, host, path)
-  duplicity_dir = get_git_dir(uuid, host, path)
-  # check that dir exists & create it if it does not
-  if not os.path.exists(duplicity_dir):
-    init_backup(uuid, host, path)
-  
-  # start backup  
-  duplicity_cmd = 'duplicity --no-encryption %s file://%s' % (path, duplicity_dir,)
-  print '$', duplicity_cmd
-  f = os.popen(duplicity_cmd)
-  s = []
-  for line in f:
-    s.append(line)
-    sys.stdout.write(line)
-  f.close()
-  s = ''.join(s)
-  return
-
+    assert test_backup_assertions(uuid, host, path)
+    duplicity_dir = get_git_dir(uuid, host, path)
+    # check that dir exists & create it if it does not
+    if not os.path.exists(duplicity_dir):
+        init_backup(uuid, host, path)
+        # start backup  
+        duplicity_cmd = 'duplicity --no-encryption %s file://%s' % (path, duplicity_dir,)
+        print '$', duplicity_cmd
+        f = os.popen(duplicity_cmd)
+        s = []
+        for line in f:
+            s.append(line)
+            sys.stdout.write(line)
+        f.close()
+        s = ''.join(s)
+    return
 
 def get_preferences(uuid, host, path):
   preferences = dict(settings.DEFAULT_PREFERENCES)
@@ -287,7 +280,6 @@ def get_revisions(uuid, host, path):
             # check if there are backups lets fill the dictionary
             if line.startswith('Full') or line.startswith('Incremental'):
                 entry = {}
-                test = line.split(' ')
                 for column in line.split(' '):
                     if column != '':
                         if column.lower() == 'full' or column.lower() == 'incremental':
@@ -305,8 +297,7 @@ def get_revisions(uuid, host, path):
                         elif 'year' in entry and 'nVolumes' not in entry:
                             entry['nVolumes'] = column                            
                 if entry:
-                    log.append(entry)
-                    
+                    log.append(entry)                    
     print 'log', log
     return log
 
@@ -370,12 +361,12 @@ def get_status(uuid, host, path):
 
 
 def delete_backup(uuid, host, path):
-  git_dir = get_git_dir(uuid, host, path)
-  cmd = 'rm -Rf "%s"' % git_dir
-  print '$', cmd
-  f = os.popen(cmd)
-  for line in f:
-    sys.stdout.write(line)
-  f.close()
+    git_dir = get_git_dir(uuid, host, path)
+    cmd = 'rm -Rf "%s"' % git_dir
+    print '$', cmd
+    f = os.popen(cmd)
+    for line in f:
+        sys.stdout.write(line)
+    f.close()
   
 
