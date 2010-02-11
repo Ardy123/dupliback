@@ -4,6 +4,8 @@ import backup
 import settings
 import util
 import backup_progress_gui
+import backup_status_gui
+
 
 def echo(*args):
     print 'echo', args
@@ -100,7 +102,8 @@ class GUI(object):
             gui = self
             class T(threading.Thread):
                 def run(self):
-                    fn = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir )                    
+                    fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir )
+                    os.remove(tmp_path)                    
                     util.open_file(fn)
                     gtk.gdk.threads_enter()
                     running_tasks_model.remove(i)
@@ -113,9 +116,8 @@ class GUI(object):
         dialog.destroy()
 
     def start_explore(self):
-        target_dir = tmp = tempfile.mkdtemp(suffix='_flyback')
+        target_dir = tempfile.mkdtemp(suffix='_flyback')
         rev = self.get_selected_revision()
-
         icon = self.main_window.render_icon(gtk.STOCK_DIRECTORY, gtk.ICON_SIZE_MENU)
         running_tasks_model = self.xml.get_widget('running_tasks').get_model()
         i = running_tasks_model.append( ( icon, util.pango_escape('preparing folder for exploration: '+target_dir), datetime.datetime.now(), '' ) )
@@ -123,12 +125,9 @@ class GUI(object):
 
         class T(threading.Thread):
             def run(self):
-                fn = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir )
-                os.chdir(target_dir)
-                os.system('tar -zxvf "%s"' % fn)
-                os.remove(fn)
-                os.chdir(util.RUN_FROM_DIR)
-                util.open_file(target_dir)
+                fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir )
+                os.remove( fn )
+                os.system( 'xdg-open ' + tmp_path + " &" )                
                 gtk.gdk.threads_enter()
                 running_tasks_model.remove(i)
                 messageBox.takedownProgressBar()
@@ -139,19 +138,17 @@ class GUI(object):
     def start_status(self):
         icon = self.main_window.render_icon(gtk.STOCK_FIND, gtk.ICON_SIZE_MENU)
         running_tasks_model = self.xml.get_widget('running_tasks').get_model()
-        i = running_tasks_model.append( ( icon, util.pango_escape('retrieving folder status since last backup...'), datetime.datetime.now(), '' ) )
-        import backup_status_gui
-        gui2 = backup_status_gui.GUI(self.register_gui, self.unregister_gui, self.uuid, self.host, self.path)
-        self.register_gui( gui2 )
-        gui = self
-
+        i = running_tasks_model.append( ( icon, util.pango_escape('retrieving folder status since last backup...'), datetime.datetime.now(), '' ) )       
+        gui = self  
         class T(threading.Thread):
             def run(self):
                 added, modified, deleted = backup.get_status( gui.uuid, gui.host, gui.path )
-                gtk.gdk.threads_enter()                                
-                gui2.set_files(added, modified, deleted)
+                gtk.gdk.threads_enter()                                                
                 running_tasks_model.remove(i)
-                messageBox.takedownProgressBar()
+                messageBox.takedownProgressBar() 
+                gui2 = backup_status_gui.GUI(gui.register_gui, gui.unregister_gui, gui.uuid, gui.host, gui.path, gui.main_window )               
+                gui.register_gui( gui2 )
+                gui2.set_files(added, modified, deleted)
                 gtk.gdk.threads_leave()                
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving Status, Please Wait' )
         T().start()        

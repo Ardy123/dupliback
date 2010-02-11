@@ -303,34 +303,33 @@ def get_revisions(uuid, host, path):
 
 
 def get_files_for_revision(uuid, host, path, rev):
-  duplicity_dir = get_git_dir(uuid, host, path)
-  duplicity_cmd = 'duplicity list-current-files --time %s --no-encryption file://%s' % ( rev, duplicity_dir)
-  print '$', duplicity_cmd
-  f = os.popen(duplicity_cmd)
-  s = []
-  for line in f:
-    s.append(line)
-  f.close()
-  s = ''.join(s)
-  return [ x.strip('"') for x in s.split('\n') ]
+    duplicity_dir = get_git_dir(uuid, host, path)
+    duplicity_cmd = 'duplicity list-current-files --time %s --no-encryption file://%s' % ( rev, duplicity_dir)
+    print '$', duplicity_cmd
+    f = os.popen(duplicity_cmd)
+    s = []
+    for line in f:
+        s.append(line)
+    f.close()
+    s = ''.join(s)
+    return [ x.strip('"') for x in s.split('\n') ]
 
 
 def export_revision(uuid, host, path, rev, target_path):
-  tmp_dir = tempfile.mkdtemp(suffix='_flyback') + 'archive-%s' % (rev)
-  duplicity_dir = get_git_dir(uuid, host, path)
-  duplicity_cmd = 'duplicity restore --time %s --no-encryption file://%s %s' % ( rev, duplicity_dir,tmp_dir)
-  fn = '%s/flyback-archive_r%s.tar.gz' % (target_path, rev)
-  cmd = duplicity_cmd + ' && tar -czvf %s %s' % (fn, tmp_dir)
-  print '$', cmd
-  f = os.popen(cmd)
-  s = []
-  for line in f:
-    s.append(line)
-    sys.stdout.write(line)
-  f.close()
-  s = ''.join(s)
-  rmdir(tmp_dir)
-  return fn
+    tmp_dir = (tempfile.mkdtemp(suffix='_flyback') + 'archive-%s' % (rev)).replace(":",".")
+    duplicity_dir = get_git_dir(uuid, host, path)
+    duplicity_cmd = 'duplicity restore --time %s --no-encryption file://%s %s' % ( rev, duplicity_dir,tmp_dir)
+    fn = '%s/flyback-archive_r%s.tar.gz' % (target_path, rev)
+    cmd = duplicity_cmd + ' && tar -czvf %s %s' % (fn, tmp_dir)
+    print '$', cmd
+    f = os.popen(cmd)
+    s = []
+    for line in f:
+        s.append(line)
+        sys.stdout.write(line)
+    f.close()
+    s = ''.join(s)   
+    return fn, tmp_dir
 
 
 def get_status(uuid, host, path):
