@@ -51,7 +51,7 @@ class GUI(object):
         class T(threading.Thread):
             def run(self):
                 if rev not in gui.rev_files_map:
-                    gui.rev_files_map[rev] = backup.get_files_for_revision(gui.uuid, gui.host, gui.path, rev)
+                    gui.rev_files_map[rev] = backup.get_files_for_revision(gui.uuid, gui.host, gui.path, rev, gui.password)
                 gtk.gdk.threads_enter()
                 if rev==gui.get_selected_revision():
                     treeview_files_model.clear()
@@ -81,7 +81,7 @@ class GUI(object):
         gui = self
         class T(threading.Thread):
             def run(self):
-                backup.backup(gui.uuid, gui.host, gui.path)
+                backup.backup(gui.uuid, gui.host, gui.path, gui.password)
                 gtk.gdk.threads_enter()                                
                 gui.update_revisions()
                 running_tasks_model.remove(i)
@@ -102,8 +102,8 @@ class GUI(object):
             gui = self
             class T(threading.Thread):
                 def run(self):
-                    fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir )
-                    os.remove(tmp_path)                    
+                    fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )                         
+                    backup.rmdir(tmp_path)               
                     util.open_file(fn)
                     gtk.gdk.threads_enter()
                     running_tasks_model.remove(i)
@@ -125,7 +125,7 @@ class GUI(object):
 
         class T(threading.Thread):
             def run(self):
-                fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir )
+                fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )
                 os.remove( fn )
                 os.system( 'xdg-open ' + tmp_path + " &" )                
                 gtk.gdk.threads_enter()
@@ -142,7 +142,7 @@ class GUI(object):
         gui = self  
         class T(threading.Thread):
             def run(self):
-                added, modified, deleted = backup.get_status( gui.uuid, gui.host, gui.path )
+                added, modified, deleted = backup.get_status( gui.uuid, gui.host, gui.path, gui.password )
                 gtk.gdk.threads_enter()                                                
                 running_tasks_model.remove(i)
                 messageBox.takedownProgressBar() 
@@ -154,14 +154,15 @@ class GUI(object):
         T().start()        
 
 
-    def __init__(self, register_gui, unregister_gui, uuid, host, path):
+    def __init__(self, register_gui, unregister_gui, uuid, host, path, password):
 
         self.register_gui = register_gui
         self.unregister_gui = unregister_gui
         self.uuid = uuid
         self.host = host
         self.path = path
-    
+        self.password = password
+        
         self.rev_files_map = {}
   
         self.xml = gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'manage_backup.glade' ) )

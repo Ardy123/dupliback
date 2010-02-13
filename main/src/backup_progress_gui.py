@@ -1,4 +1,4 @@
-import gtk, gtk.glade, os, threading
+import gtk.glade, os, threading
 import util
 
 class GUI(object):

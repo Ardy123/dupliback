@@ -1,6 +1,7 @@
-import os, pickle, sys, tempfile, traceback
+import os, pickle, sys, tempfile, traceback, hashlib, subprocess
 import uuid as uuidlib
 import settings
+ 
 
 UUID_GVFS = uuidlib.uuid5(uuidlib.NAMESPACE_DNS, 'gvfs.flyback.org')
 
@@ -15,6 +16,8 @@ def get_known_backups():
                     f = open( os.path.join(path, fbdb, 'flyback_properties.pickle') )
                     o = pickle.load(f)
                     f.close()
+                    if not o.has_key('password'):
+                        o['password'] = ''
                     backups.append(o)
                     print 'discovered backup:', uuid, path
                 except:
@@ -162,7 +165,22 @@ def get_git_dir(uuid, host, path):
   print 'git_db_dir', git_db_dir
   return git_db_dir
   
+def gen_passwordCmd(password):
+    if password:
+        passwordLine = ''
+    else:
+        passwordLine = '--no-encryption'    
+    return passwordLine
   
+def gen_passwordEncrypt(password):
+    if password:
+        md5 = hashlib.md5()
+        md5.update(password)
+        hashStr = md5.hexdigest()
+    else:
+        hashStr = ''
+    return hashStr
+
 def rmdir(tmp):
   f = os.popen('rm -Rf "%s"' % tmp)
   s = f.read().strip()
@@ -170,90 +188,82 @@ def rmdir(tmp):
   if s:  print s
 
 
-def init_backup(uuid, host, path):
-  assert test_backup_assertions(uuid, host, path, test_exists=False)
-  duplicity_dir = get_git_dir(uuid, host, path)
-  os.mkdir(duplicity_dir)
-  # write config info
-  f = open( os.path.join(duplicity_dir, 'flyback_properties.pickle'), 'w' )
-  o = {
-    'uuid':uuid,
-    'host':host,
-    'path':path,
-    'version':settings.PROGRAM_VERSION,
-  }
-  pickle.dump(o,f)
-  f.close()
-  # save default preferences
-  preferences = get_preferences(uuid, host, path)
-  save_preferences(uuid, host, path, preferences)
-  return
+def init_backup(uuid, host, path, password):
+    assert test_backup_assertions(uuid, host, path, test_exists=False)
+    duplicity_dir = get_git_dir(uuid, host, path)
+    os.mkdir(duplicity_dir)
+    # write config info
+    f = open( os.path.join(duplicity_dir, 'flyback_properties.pickle'), 'w' )
+    o = {
+		'uuid':uuid,
+		'host':host,
+		'path':path,
+		'version':settings.PROGRAM_VERSION,
+        'password': gen_passwordEncrypt(password)
+	}
+    sys.stdout.write(('password: %s' % password ) )
+    pickle.dump(o,f)
+    f.close()
+    # save default preferences
+    preferences = get_preferences(uuid, host, path)
+    if not password:
+        preferences['password_protect'] = False
+    save_preferences(uuid, host, path, preferences)
+    return
   
 
-def backup(uuid, host, path):
+def backup(uuid, host, path, password):
     assert test_backup_assertions(uuid, host, path)
     duplicity_dir = get_git_dir(uuid, host, path)
     # check that dir exists & create it if it does not
     if not os.path.exists(duplicity_dir):
         init_backup(uuid, host, path)
-        # start backup  
-        duplicity_cmd = 'duplicity --no-encryption %s file://%s' % (path, duplicity_dir,)
-        print '$', duplicity_cmd
-        f = os.popen(duplicity_cmd)
-        s = []
-        for line in f:
-            s.append(line)
-            sys.stdout.write(line)
-        f.close()
-        s = ''.join(s)
+    # start backup  
+    password_cmd = gen_passwordCmd(password)
+    duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s file://%s' % (password, password_cmd, path, duplicity_dir,)
+    print '$', duplicity_cmd
+    f = os.popen(duplicity_cmd)
+    s = []
+    for line in f:
+        s.append(line)
+        sys.stdout.write(line)
+    f.close()
+    s = ''.join(s)
     return
 
 def get_preferences(uuid, host, path):
-  preferences = dict(settings.DEFAULT_PREFERENCES)
-  duplicity_dir = get_git_dir(uuid, host, path)
-  try:
-    f = open( os.path.join(duplicity_dir, 'flyback_preferences.pickle'), 'r' )
-    o = pickle.load(f)
-    f.close()
+    preferences = dict(settings.DEFAULT_PREFERENCES)
+    duplicity_dir = get_git_dir(uuid, host, path)
+    try:
+        f = open( os.path.join(duplicity_dir, 'flyback_preferences.pickle'), 'r' )
+        o = pickle.load(f)
+        f.close()
+    except:
+        return preferences
+    #deal with a change in version numbers
     if o:
-      preferences.update(o)
-  except:
-    print traceback.print_exc()
-  return preferences
+        # version 0.1.0 did not store a version number
+        if not o.has_key('app_version'):                                       
+            o['app_version'] = '0.1.0'
+        # version 0.1.0 did not support password encrypted backups
+        if not o.has_key('password_protect'):
+            o['password_protect'] = False
+        preferences.update(o)    
+    #nothing to do right now
+    return preferences
 
 
-def save_preferences(uuid, host, path, preferences):
-  preferences_diff = {}
-  for k,v in preferences.iteritems():
-    if settings.DEFAULT_PREFERENCES.get(k)!=v:
-      preferences_diff[k] = v
-  duplicity_dir = get_git_dir(uuid, host, path)
-  try:
-    f = open( os.path.join(duplicity_dir, 'flyback_preferences.pickle'), 'w' )
-    pickle.dump(preferences_diff, f)
-    f.close()
-  except:
-    print traceback.print_exc()
-    
-  # gen exclude file
-  exclude_map = {
-    'exclude_audio': ['*.mp3','*.aac','*.wma'],
-    'exclude_video': ['*.mp4','*.avi','*.mpeg',],
-    'exclude_trash': ['Trash/','.Trash*/',],
-    'exclude_cache': ['Cache/','.cache/',],
-    'exclude_vms': ['*.vmdk',],
-    'exclude_iso': ['*.iso',],
-  }
-  try:
-    f = open( os.path.join(duplicity_dir, 'info', 'exclude'), 'w' )
-    for k,v in exclude_map.iteritems():
-      if preferences.get(k):
-        for x in v:
-          f.write('%s\n' % x)
-          print 'excluding:', x
-    f.close()
-  except:
-    print traceback.print_exc()
+def save_preferences(uuid, host, path, preferences):  
+    # delta the difference with the old preferences
+    preferences.update(get_preferences( uuid, host, path ))
+    duplicity_dir = get_git_dir(uuid, host, path)
+    try:
+        f = open( os.path.join(duplicity_dir, 'flyback_preferences.pickle'), 'w' )
+        pickle.dump(preferences, f)
+        f.close()
+    except:
+        print traceback.print_exc()    
+    return
   
 
 
@@ -302,9 +312,10 @@ def get_revisions(uuid, host, path):
     return log
 
 
-def get_files_for_revision(uuid, host, path, rev):
+def get_files_for_revision(uuid, host, path, rev, password):
     duplicity_dir = get_git_dir(uuid, host, path)
-    duplicity_cmd = 'duplicity list-current-files --time %s --no-encryption file://%s' % ( rev, duplicity_dir)
+    password_cmd = gen_passwordCmd(password)
+    duplicity_cmd = 'PASSPHRASE=%s duplicity list-current-files --time %s %s file://%s' % ( password, rev, password_cmd, duplicity_dir)
     print '$', duplicity_cmd
     f = os.popen(duplicity_cmd)
     s = []
@@ -315,10 +326,11 @@ def get_files_for_revision(uuid, host, path, rev):
     return [ x.strip('"') for x in s.split('\n') ]
 
 
-def export_revision(uuid, host, path, rev, target_path):
+def export_revision(uuid, host, path, rev, target_path, password):
     tmp_dir = (tempfile.mkdtemp(suffix='_flyback') + 'archive-%s' % (rev)).replace(":",".")
     duplicity_dir = get_git_dir(uuid, host, path)
-    duplicity_cmd = 'duplicity restore --time %s --no-encryption file://%s %s' % ( rev, duplicity_dir,tmp_dir)
+    password_cmd = gen_passwordCmd(password)
+    duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s file://%s %s' % ( password, rev, password_cmd, duplicity_dir,tmp_dir)
     fn = '%s/flyback-archive_r%s.tar.gz' % (target_path, rev)
     cmd = duplicity_cmd + ' && tar -czvf %s %s' % (fn, tmp_dir)
     print '$', cmd
@@ -332,17 +344,18 @@ def export_revision(uuid, host, path, rev, target_path):
     return fn, tmp_dir
 
 
-def get_status(uuid, host, path):
+def get_status(uuid, host, path, password):
     assert test_backup_assertions(uuid, host, path)
     added = []
     modified = []
     deleted = []
     duplicity_dir = get_git_dir(uuid, host, path)
-    duplicity_cmd = 'duplicity --no-encryption --dry-run %s file://%s' % (path,duplicity_dir)
+    password_cmd = gen_passwordCmd(password)
+    duplicity_cmd = 'PASSPHRASE=%s duplicity %s --dry-run %s file://%s' % (password, password_cmd, path, duplicity_dir)
     print '$', duplicity_cmd
-    f = os.popen(duplicity_cmd)
+    f = os.popen(duplicity_cmd)    
     for line in f:
-        sys.stdout.write(line)
+        sys.stdout.write(line)            
         if line.startswith('DeletedFiles'):
             deleted.append( 'Deleted Files: %s' % (line.split(' ')[1] ) )
         elif line.startswith('ChangedFiles'):

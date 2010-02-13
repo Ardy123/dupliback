@@ -71,6 +71,7 @@ class DeviceMonitorThread(threading.Thread):
         
 device_monitor_thread = DeviceMonitorThread()
 device_monitor_thread.daemon = True
+
 def register_device_added_removed_callback(callback):
   if not device_monitor_thread.is_alive():
     device_monitor_thread.start()
@@ -79,4 +80,9 @@ def register_device_added_removed_callback(callback):
   device_monitor_thread.remove_callbacks.append(callback)
 
 
+def SDBMHash32(key):
+    hash = 0
+    for i in range(len(key)):
+        hash = ord(key[i]) + (hash << 6) + (hash << 16) - hash;
+    return hash & 0xFFFFFFFF
 
