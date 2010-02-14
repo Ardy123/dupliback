@@ -1,0 +1,13 @@
+= Introduction =
+
+Welcome to the dupli.back wiki. This wiki is to be used to discuss all things related to dupli.back. The latest version of dupli.back is 0.2.0 which was released on Sun, Feb. 14, 2010. 
+
+= Details ==
+Originally based on 'flyback', dupliback, is a full featured backup application built on top of the duplicity command line backup tool. The projects goals are to support the following features.
+
+  * Support password encrypted backup
+  * Support backing up on remote servers via ssh
+  * Support backing up on Amazon Cloud S3 service
+  * Support backing up on local and removable disks
+  * Keep a nice & clean user interface, which was originally based on Apple's 'Time Machine'
+  * Fix many of the outstanding bugs in 'flyback'
