@@ -30,7 +30,7 @@ class GUI(object):
 		if entry:
 			uuid = model.get_value(entry, 3)
 			host = backup.get_hostname()
-			path = self.xml.get_widget('filechooserbutton').get_current_folder()
+			path = self.xml.get_widget('filechooserbutton').get_filename() #get_current_folder()
 			print 'opening... drive:%s'%uuid, 'host:%s'%host, 'path:%s'%path
 			backup.init_backup(uuid, host, path, password)
 			self.register_gui( manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password) )
@@ -59,7 +59,7 @@ class GUI(object):
 			treeview_backups_model.append( (icon, s, backup.is_dev_present(uuid), uuid) )
 		if not writable_devices:
 			icon = self.main_window.render_icon(gtk.STOCK_INFO, gtk.ICON_SIZE_DIALOG)
-			s = 'In order to create a backup, Flyback needs a hard drive\nother than the one your computer boots from.\n(preferably external and removable)	Please plug one\ninto a free USB or eSATA port...'
+			s = 'In order to create a backup, dupli.back needs a hard drive\nother than the one your computer boots from.\n(preferably external and removable)	Please plug one\ninto a free USB or eSATA port...'
 			treeview_backups_model.append( (icon, s, False, None) )
 			self.xml.get_widget('button_new').set_sensitive(False)
 		else:

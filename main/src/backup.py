@@ -100,18 +100,20 @@ def test_backup_assertions(uuid, host, path, test_exists=True):
 
 
 def get_dev_paths_for_uuid(uuid):
-  dev_path = os.path.join( '/dev/disk/by-uuid/', uuid )
-  f = os.popen('udevadm info -q all -n "%s"' % dev_path)
-  s = f.read()
-  f.close()
-  dev_paths = set()
-  for line in s.split('\n'):
-    if line.startswith('E: DEVNAME='):
-      dev_paths.add( line[line.index('=')+1:].strip() )
-    if line.startswith('E: DEVLINKS='):
-      for path in line[line.index('=')+1:].strip().split():
-        dev_paths.add(path)
-  return dev_paths
+    dev_path = os.path.join( '/dev/disk/by-uuid/', uuid )
+    f = os.popen('udevadm info -q all -n "%s"' % dev_path)
+    s = f.read()
+    f.close()
+    dev_paths = set()
+    for line in s.split('\n'):
+        if line.startswith('N: '):
+            dev_paths.add( os.path.join('/dev', line[line.index(' ')+1:].strip() ) )
+        if line.startswith('E: DEVNAME='):
+            dev_paths.add( line[line.index('=')+1:].strip() )
+        if line.startswith('E: DEVLINKS='):
+            for path in line[line.index('=')+1:].strip().split():
+                dev_paths.add(path)
+    return dev_paths
 
 def get_mount_point_for_uuid(uuid):
   # handle gfvs
@@ -255,11 +257,12 @@ def get_preferences(uuid, host, path):
 
 def save_preferences(uuid, host, path, preferences):  
     # delta the difference with the old preferences
-    preferences.update(get_preferences( uuid, host, path ))
+    pref = get_preferences( uuid, host, path )
+    pref.update( preferences )
     duplicity_dir = get_git_dir(uuid, host, path)
     try:
         f = open( os.path.join(duplicity_dir, 'flyback_preferences.pickle'), 'w' )
-        pickle.dump(preferences, f)
+        pickle.dump(pref, f)
         f.close()
     except:
         print traceback.print_exc()    
