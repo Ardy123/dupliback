@@ -31,9 +31,10 @@ class GUI(object):
         return
 
     def update_files(self,a=None):
-        treeview_files_model = self.xml.get_widget('treeview_files').get_model()
-        treeview_files_model.clear()
-        treeview_files_model.append( (util.pango_escape('loading files... (please wait)'),) )
+        treeview_files_view = self.xml.get_widget('treeview_files')
+        treeview_files_model = treeview_files_view.get_model()
+        treeview_files_model.clear()        
+        treeview_files_model.append( None, [('loading files... (please wait)'),('')] )
     
         model, entry = a.get_selection().get_selected()
         if not entry:
@@ -46,20 +47,58 @@ class GUI(object):
         icon = self.main_window.render_icon(gtk.STOCK_FIND, gtk.ICON_SIZE_MENU)
         running_tasks_model = self.xml.get_widget('running_tasks').get_model()
         i = running_tasks_model.append( ( icon, util.pango_escape('loading files for rev: '+self.path), datetime.datetime.now(), '' ) )
+        replacmentModel = gtk.TreeStore( str, str )
+        replacmentModel.set_default_sort_func(None)
         gui = self
             
         class T(threading.Thread):
+            def splitPathFilename(self, filepath):
+                # split out path from file 
+                ndx = filepath.rfind('/')
+                if ndx == -1:
+                    return ('', filepath)
+                else:
+                    return (filepath[:ndx],filepath[ndx + 1:])                            
+            def findPath(self, pathStr):
+                #find the delta in the curr path and the desired path
+                dirSplit = pathStr.split('/')
+                if dirSplit[0] != '': dirSplit.insert( 0, '' )
+                #unwind cached path until it matches desired path
+                del self.currPath[len(dirSplit):]
+                for ndx, dir in enumerate(dirSplit):
+                    try:
+                        if self.currPath[ndx][0] != dir:
+                            del self.currPath[ndx:]                                                          
+                            break
+                    except IndexError:
+                        break                 
+                #find adjusted path - because path will always be the last added path just find the last path and add it              
+                itr = self.currPath[-1][1]
+                if self.currPath[-1][0] != dir:                    
+                    itr = replacmentModel.iter_nth_child( itr, replacmentModel.iter_n_children( itr ) - 1)
+                    self.currPath.append([dir,itr]) 
+                return itr
+                
+            def callback(self, pathDateLst ):
+                gtk.gdk.threads_enter()                
+                # split out path from file
+                path, file = self.splitPathFilename(pathDateLst[0])
+                # get model iterator 
+                itr =  self.findPath(path)
+                #add item                        
+                replacmentModel.append( itr, [(file),(pathDateLst[1])] )
+                gtk.gdk.threads_leave()
+                return                            
             def run(self):
-                if rev not in gui.rev_files_map:
-                    gui.rev_files_map[rev] = backup.get_files_for_revision(gui.uuid, gui.host, gui.path, rev, gui.password)
-                gtk.gdk.threads_enter()
-                if rev==gui.get_selected_revision():
-                    treeview_files_model.clear()
-                    for fn in gui.rev_files_map[rev]:
-                        treeview_files_model.append( (util.pango_escape(fn),) )
+                self.currPath=[['',None]]
+                backup.get_files_for_revision(gui.uuid, gui.host, gui.path, rev, gui.password, self.callback)
+                gtk.gdk.threads_enter()                
                 running_tasks_model.remove(i)
-                messageBox.takedownProgressBar()
-                gtk.gdk.threads_leave()                
+                messageBox.takedownProgressBar()                
+                treeview_files_view.set_model(replacmentModel)
+                treeview_files_model = replacmentModel
+                gtk.gdk.threads_leave()
+                                
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving File List, Please Wait' )
         messageBox.main_window.set_transient_for( self.main_window )
         T().start()        
@@ -195,13 +234,18 @@ class GUI(object):
     
         # file list
         treeview_files_widget = self.xml.get_widget('treeview_files')
-        treeview_files_model = gtk.ListStore( str )
+        treeview_files_model = gtk.TreeStore( str, str )
         renderer = gtk.CellRendererText()
         renderer.set_property('font','monospace')
-        treeview_files_widget.append_column( gtk.TreeViewColumn('Files', renderer, markup=0) )
+        filesColumn = gtk.TreeViewColumn('Files', renderer, markup=0)
+        filesColumn.set_resizable(True)
+        dateColumn = gtk.TreeViewColumn('Date', renderer, markup=1)
+        dateColumn.set_resizable(True)
+        treeview_files_widget.append_column( filesColumn )
+        treeview_files_widget.append_column( dateColumn )
         treeview_files_widget.set_model(treeview_files_model)
         treeview_files_widget.set_property('rules-hint', True)
-        treeview_files_model.append( (util.pango_escape('please select a revision to view... (on the left)'),) )
+        treeview_files_model.append( None, [('please select a revision to view... (on the left)'),('')] )
 
         # task list
         running_tasks_widget = self.xml.get_widget('running_tasks')

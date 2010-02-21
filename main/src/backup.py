@@ -315,18 +315,27 @@ def get_revisions(uuid, host, path):
     return log
 
 
-def get_files_for_revision(uuid, host, path, rev, password):
+def get_files_for_revision(uuid, host, path, rev, password, callback):
     duplicity_dir = get_git_dir(uuid, host, path)
     password_cmd = gen_passwordCmd(password)
     duplicity_cmd = 'PASSPHRASE=%s duplicity list-current-files --time %s %s file://%s' % ( password, rev, password_cmd, duplicity_dir)
     print '$', duplicity_cmd
-    f = os.popen(duplicity_cmd)
-    s = []
+    f = os.popen(duplicity_cmd)    
     for line in f:
-        s.append(line)
+        lineSplit = line.split( ' ', 5 )             
+        if lineSplit[0] != 'Last':
+            # remove blank entries from the list
+            nBlankLines = lineSplit.count('')
+            if nBlankLines:
+                tmpList = lineSplit[-1].split( ' ', nBlankLines )
+                lineSplit.pop()
+                lineSplit.extend( tmpList)
+            # search for path portion and separate out the date from the path
+            path = lineSplit[-1].strip('\n')
+            date = ' '.join(lineSplit[:-1])
+            callback([ (path), (date) ] )                                                    
     f.close()
-    s = ''.join(s)
-    return [ x.strip('"') for x in s.split('\n') ]
+    return
 
 
 def export_revision(uuid, host, path, rev, target_path, password):
