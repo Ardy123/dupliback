@@ -4,6 +4,9 @@ import datetime, os, sys, threading, time
 
 RUN_FROM_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
 
+def system_escape(string):
+    message = "\ ".join(string.split(" "))    
+    return message
 
 def pango_escape(message):
 	assert isinstance(message, basestring)

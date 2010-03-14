@@ -1,4 +1,4 @@
-import datetime, gnome, gobject, gtk, gtk.glade, os, sys, tempfile, threading, time
+import datetime, gobject, gtk.glade, gtk.gdk, os,tempfile, threading, time
 
 import backup
 import settings
@@ -103,6 +103,39 @@ class GUI(object):
         messageBox.main_window.set_transient_for( self.main_window )
         T().start()        
 
+    def restore_selection(self, widget, selection=None ):  
+        gui = self
+        rev = self.get_selected_revision()
+        class T(threading.Thread):
+            def run(self):         
+                for numericPath in selection[1]:
+                    # construct a string path
+                    path = ""
+                    for ndx in xrange( 0, len(numericPath) ):
+                        tpl = () + numericPath[:ndx + 1]
+                        itr = selection[0].get_iter( tpl )
+                        path += ( "/"+ selection[0].get_value(itr,0) )
+                    backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password, path )
+                messageBox.takedownProgressBar()
+        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Backing Up, Please Wait' )
+        T().start()                            
+        return
+    
+    def treeview_mouse_notify(self, widget, event):
+        if event.button == 3:            
+            selection =  widget.get_selection().get_selected_rows()
+            if selection[1] != []:
+                # create menu
+                menu = gtk.Menu()  
+                restoreSelection = gtk.MenuItem("Restore Selection")
+                restoreSelection.connect("activate", self.restore_selection, selection )
+                menu.append( restoreSelection )                        
+                # display menu
+                restoreSelection.show()
+                menu.popup( None, None, None, event.button, event.time )
+                return True
+        return False
+    
     def get_selected_revision(self):
         model, entry = self.xml.get_widget('treeview_revisions').get_selection().get_selected()
         if not entry: return
@@ -225,7 +258,7 @@ class GUI(object):
         # revision list
         treeview_revisions_model = gtk.ListStore( str, str )
         treeview_revisions_widget = self.xml.get_widget('treeview_revisions')
-        renderer = gtk.CellRendererText()
+        renderer = gtk.CellRendererText()        
         treeview_revisions_widget.append_column( gtk.TreeViewColumn('History', renderer, markup=0) )
         treeview_revisions_widget.set_model(treeview_revisions_model)
         treeview_revisions_widget.connect( 'cursor-changed', self.update_files )
@@ -234,7 +267,7 @@ class GUI(object):
     
         # file list
         treeview_files_widget = self.xml.get_widget('treeview_files')
-        treeview_files_model = gtk.TreeStore( str, str )
+        treeview_files_model = gtk.TreeStore( str, str )      
         renderer = gtk.CellRendererText()
         renderer.set_property('font','monospace')
         filesColumn = gtk.TreeViewColumn('Files', renderer, markup=0)
@@ -246,6 +279,8 @@ class GUI(object):
         treeview_files_widget.set_model(treeview_files_model)
         treeview_files_widget.set_property('rules-hint', True)
         treeview_files_model.append( None, [('please select a revision to view... (on the left)'),('')] )
+        treeview_files_widget.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+        treeview_files_widget.connect("button_press_event", self.treeview_mouse_notify)
 
         # task list
         running_tasks_widget = self.xml.get_widget('running_tasks')
