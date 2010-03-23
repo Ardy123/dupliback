@@ -1,3 +1,4 @@
+#labels Home
 = Introduction =
 
 Welcome to the dupli.back wiki. This wiki is to be used to discuss all things related to dupli.back. The latest version of dupli.back is 0.2.0 which was released on Sun, Feb. 14, 2010. 
