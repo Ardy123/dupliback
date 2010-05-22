@@ -1,15 +1,15 @@
 [Desktop Entry]
-Version=0.2.1
+Version=0.2.3
 Encoding=UTF-8
 Name=dupli.back Backup Utility
 Type=Application
 GenericName=dupli.back
 Comment=Advanced local and remote backup 
-Icon=/usr/share/icons/gnome/scalable/actions/stock_save.svg
+Icon=/usr/share/dupliback/images/dupliback.png
 FilePattern=dupliback;
 Exec=/usr/share/dupliback/dupliback.py
 Terminal=false
 StartupNotify=false
 Categories=Application;System;
 GenericName[en_GB]=Backup Utility
-
+GenericName[en_US]=Backup Utility
