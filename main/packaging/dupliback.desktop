@@ -11,5 +11,5 @@ Exec=/usr/share/dupliback/dupliback.py
 Terminal=false
 StartupNotify=false
 Categories=Application;System;
-GenericName[en_GB]=Backup Utility
-GenericName[en_US]=Backup Utility
+GenericName[en_GB]=dupli.back
+GenericName[en_US]=dupli.back
