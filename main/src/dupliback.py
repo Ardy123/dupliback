@@ -65,7 +65,7 @@ if __name__=='__main__':
       print ' $ python flyback.py <drive_uuid> <path>'
       print
   else:
-    import gobject, gnome, gtk
+    import gobject,gtk, gnome
     gnome.init( settings.PROGRAM_NAME, settings.PROGRAM_VERSION )
     gobject.threads_init()
     gtk.gdk.threads_init()

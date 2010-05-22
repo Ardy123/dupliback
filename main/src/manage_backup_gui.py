@@ -41,6 +41,7 @@ class GUI(object):
             treeview_files_model.clear()
             return
         self.xml.get_widget('toolbutton_export').set_sensitive( True )
+        self.xml.get_widget('toolbutton_restore').set_sensitive( True )
         self.xml.get_widget('toolbutton_explore').set_sensitive( True )
         rev = entry and model.get_value(entry, 1)
         
@@ -160,8 +161,20 @@ class GUI(object):
                 messageBox.takedownProgressBar()
                 gtk.gdk.threads_leave()
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Backing Up, Please Wait' )
-        T().start()        
-    
+        T().start()
+                
+    def start_restore(self):        
+        rev = self.get_selected_revision()
+        gui = self
+        class T(threading.Thread):
+            def run(self):
+                backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password)                
+                gtk.gdk.threads_enter()
+                messageBox.takedownProgressBar()
+                gtk.gdk.threads_leave()
+        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Exporting Backup, Please Wait' )
+        T().start()            
+        
     def start_export(self):
         dialog = gtk.FileChooserDialog(title='Select folder to save archive to...', parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
         response = dialog.run()
@@ -249,6 +262,7 @@ class GUI(object):
         # toolbar
         self.xml.get_widget('toolbutton_backup').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
         self.xml.get_widget('toolbutton_backup').connect('clicked', lambda x: self.start_backup() )
+        self.xml.get_widget('toolbutton_restore').connect('clicked', lambda x: self.start_restore() )        
         self.xml.get_widget('toolbutton_status').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
         self.xml.get_widget('toolbutton_status').connect('clicked', lambda x: self.start_status() )
         self.xml.get_widget('toolbutton_export').connect('clicked', lambda x: self.start_export() )

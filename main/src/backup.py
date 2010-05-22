@@ -322,7 +322,7 @@ def get_files_for_revision(uuid, host, path, rev, password, callback):
     print '$', duplicity_cmd
     f = os.popen(duplicity_cmd)    
     for line in f:
-        lineSplit = line.split( ' ', 5 )             
+        lineSplit = line.split( ' ', 5 )
         if lineSplit[0] != 'Last':
             # remove blank entries from the list
             nBlankLines = lineSplit.count('')
@@ -355,11 +355,15 @@ def export_revision(uuid, host, path, rev, target_path, password):
     s = ''.join(s)   
     return fn, tmp_dir
 
-def restore_to_revision( uuid, host, path, rev, password, restorePath):
+def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
     duplicity_dir = get_git_dir(uuid, host, path)
     password_cmd = gen_passwordCmd(password)
-    dst_dir = path + util.system_escape(restorePath)
-    duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s --file-to-restore %s file://%s %s' % ( password, rev, password_cmd, util.system_escape(restorePath[1:]), duplicity_dir, dst_dir )
+    if restorePath == None:
+        dst_dir = path;
+        duplicity_cmd = 'PASSPHRASE=%s duplicity restore --force --time %s %s file://%s %s' % ( password, rev, password_cmd, duplicity_dir,dst_dir)
+    else:
+        dst_dir = path + util.system_escape(restorePath)
+        duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s --file-to-restore %s file://%s %s' % ( password, rev, password_cmd, util.system_escape(restorePath[1:]), duplicity_dir, dst_dir )
     f = os.popen(duplicity_cmd)
     for line in f:
         sys.stdout.write(line)
