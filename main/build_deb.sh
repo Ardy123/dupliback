@@ -10,10 +10,12 @@ mkdir debian/usr/
 mkdir debian/usr/share
 mkdir debian/usr/share/dupliback
 mkdir debian/usr/share/dupliback/glade
+mkdir debian/usr/share/dupliback/images
 mkdir debian/usr/share/applications
 # copy files over
 cp src/*.py debian/usr/share/dupliback
 cp src/glade/*.glade debian/usr/share/dupliback/glade/
+cp src/images/*.png debian/usr/share/dupliback/images/
 cp packaging/control debian/DEBIAN
 cp packaging/dupliback.desktop debian/usr/share/applications/
 # build package
