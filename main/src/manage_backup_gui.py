@@ -1,10 +1,6 @@
 import datetime, gobject, gtk.glade, gtk.gdk, os,tempfile, threading, time
 
-import backup
-import settings
-import util
-import backup_progress_gui
-import backup_status_gui
+import backup, settings, util, backup_progress_gui, backup_status_gui, about_gui
 
 
 def echo(*args):
@@ -201,7 +197,7 @@ class GUI(object):
         dialog.destroy()
 
     def start_explore(self):
-        target_dir = tempfile.mkdtemp(suffix='_flyback')
+        target_dir = tempfile.mkdtemp(suffix='_duplibackback')
         rev = self.get_selected_revision()
         icon = self.main_window.render_icon(gtk.STOCK_DIRECTORY, gtk.ICON_SIZE_MENU)
         running_tasks_model = self.xml.get_widget('running_tasks').get_model()
@@ -212,7 +208,7 @@ class GUI(object):
             def run(self):
                 fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )
                 os.remove( fn )
-                os.system( 'xdg-open ' + tmp_path + " &" )                
+                util.open_file(tmp_path)               
                 gtk.gdk.threads_enter()
                 running_tasks_model.remove(i)
                 messageBox.takedownProgressBar()
@@ -238,7 +234,10 @@ class GUI(object):
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving Status, Please Wait' )
         T().start()        
 
-
+    def open_about(self):
+        about_dialoge = about_gui.GUI(self.register_gui, self.unregister_gui, self.main_window)
+        
+        
     def __init__(self, register_gui, unregister_gui, uuid, host, path, password):
 
         self.register_gui = register_gui
@@ -268,6 +267,7 @@ class GUI(object):
         self.xml.get_widget('toolbutton_export').connect('clicked', lambda x: self.start_export() )
         self.xml.get_widget('toolbutton_explore').connect('clicked', lambda x: self.start_explore() )
         self.xml.get_widget('toolbutton_preferences').connect('clicked', lambda x: self.open_preferences() )
+        self.xml.get_widget('toolbutton_about').connect('clicked', lambda x: self.open_about() )
     
         # revision list
         treeview_revisions_model = gtk.ListStore( str, str )

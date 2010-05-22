@@ -49,7 +49,7 @@ if __name__=='__main__':
   if len(args):
     print
     print "------------------------------------------"
-    print " FlyBack - Apple's Time Machine for Linux"
+    print " dupliBack - Apple's Time Machine for Linux"
     print "------------------------------------------"
     print
     if args[0] in ('-b','--backup-all'):
@@ -58,11 +58,11 @@ if __name__=='__main__':
       run_backup(args[0], args[1])
     else:
       print ' to launch the graphical interface:'
-      print ' $ python flyback.py'
+      print ' $ python dupliback.py'
       print ' to backup all detected repositories:'
-      print ' $ python flyback.py [-b|--backup-all]'
+      print ' $ python dupliback.py [-b|--backup-all]'
       print ' to backup a specific repository:'
-      print ' $ python flyback.py <drive_uuid> <path>'
+      print ' $ python dupliback.py <drive_uuid> <path>'
       print
   else:
     import gobject,gtk, gnome

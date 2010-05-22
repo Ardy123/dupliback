@@ -1,19 +1,21 @@
-import os, pickle, sys, tempfile, traceback, hashlib, subprocess
+import os, pickle, sys, tempfile, traceback, hashlib
 import uuid as uuidlib
 import settings
 import util
 
-UUID_GVFS = uuidlib.uuid5(uuidlib.NAMESPACE_DNS, 'gvfs.flyback.org')
+UUID_GVFS = uuidlib.uuid5(uuidlib.NAMESPACE_DNS, 'gvfs.dupliback.org')
+PROPERTIES_FILE = 'dupliback_properties.pickle'
+PREFERENCES_FILE = 'dupliback_preferences.pickle'
 
 def get_known_backups():
     backups = []
     for uuid in get_all_devices():
         path = get_mount_point_for_uuid(uuid)
         if path:
-            fbdbs = [ x for x in os.listdir(path) if x.startswith('.flybackdb') ]
+            fbdbs = [ x for x in os.listdir(path) if x.startswith('.duplibackdb') ]
             for fbdb in fbdbs:
                 try:
-                    f = open( os.path.join(path, fbdb, 'flyback_properties.pickle') )
+                    f = open( os.path.join(path, fbdb, PROPERTIES_FILE) )
                     o = pickle.load(f)
                     f.close()
                     if not o.has_key('password'):
@@ -21,7 +23,7 @@ def get_known_backups():
                     backups.append(o)
                     print 'discovered backup:', uuid, path
                 except:
-                    print 'failed to read:', os.path.join(path, fbdb, 'flyback_properties.pickle')
+                    print 'failed to read:', os.path.join(path, fbdb, PROPERTIES_FILE)
     return backups
 
   
@@ -72,7 +74,7 @@ def get_writable_devices():
         path = get_mount_point_for_uuid(uuid)
         if path:
             try:
-                fn = os.path.join(path,'.flyback_write_test.txt')
+                fn = os.path.join(path,'.dupliback_write_test.txt')
                 f = open(fn, 'w')
                 f.write('delete me!')
                 f.close()
@@ -93,8 +95,8 @@ def test_backup_assertions(uuid, host, path, test_exists=True):
         print 'not os.path.exists("%s")' % path
         return False
     if test_exists:
-        if not os.path.exists(get_git_dir(uuid, host, path)):
-            print 'not os.path.exists("%s")' % get_git_dir(uuid, host, path)
+        if not os.path.exists(get_backupPath(uuid, host, path)):
+            print 'not os.path.exists("%s")' % get_backupPath(uuid, host, path)
             return False
     return True
 
@@ -116,56 +118,56 @@ def get_dev_paths_for_uuid(uuid):
     return dev_paths
 
 def get_mount_point_for_uuid(uuid):
-  # handle gfvs
-  for x,y in get_gvfs_devices_and_paths():
-    if uuid==x:
-      return y
-  # handle local devices
-  dev_paths = get_dev_paths_for_uuid(uuid)
-  f = os.popen('mount')
-  s = f.read()
-  f.close()
-  for line in s.split('\n'):
-    x = line.strip().split()
-    if x:
-      dev_path = x[0]
-      if dev_path in dev_paths:
-        mount_path = x[2]
-        return mount_path
+    # handle gfvs
+    for x,y in get_gvfs_devices_and_paths():
+        if uuid==x:
+            return y
+    # handle local devices
+    dev_paths = get_dev_paths_for_uuid(uuid)
+    f = os.popen('mount')
+    s = f.read()
+    f.close()
+    for line in s.split('\n'):
+        x = line.strip().split()
+        if x:
+            dev_path = x[0]
+            if dev_path in dev_paths:
+                mount_path = x[2]
+                return mount_path
       
 def get_drive_name(uuid):
-  paths = get_dev_paths_for_uuid(uuid)
-  drive_name = 'UUID: '+ uuid
-  for path in paths:
-    if 'disk/by-id' in path:
-      drive_name = path[path.index('disk/by-id')+11:]
-  return drive_name
+    paths = get_dev_paths_for_uuid(uuid)
+    drive_name = 'UUID: '+ uuid
+    for path in paths:
+        if 'disk/by-id' in path:
+            drive_name = path[path.index('disk/by-id')+11:]
+    return drive_name
 
 def get_free_space(uuid):
-  path = get_mount_point_for_uuid(uuid)
-  cmd = 'df "%s"' % path
-  print '$', cmd
-  f = os.popen(cmd)
-  s = f.read()
-  f.close()
-  line = s.split('\n')[1]
-  x = line.strip().split()
-  print x
-  if int(x[1])==0: return -1 # unknown amount of space
-  return int(x[-3])*1024
+    path = get_mount_point_for_uuid(uuid)
+    cmd = 'df "%s"' % path
+    print '$', cmd
+    f = os.popen(cmd)
+    s = f.read()
+    f.close()
+    line = s.split('\n')[1]
+    x = line.strip().split()
+    print x
+    if int(x[1])==0: return -1 # unknown amount of space
+    return int(x[-3])*1024
       
 def get_git_db_name(uuid, host, path):
-  import hashlib
-  s = ':'.join( (uuid, host, path) )
-  print s
-  return '.flybackdb_%s' % hashlib.sha1(s).hexdigest()
+    s = ':'.join( (uuid, host, path) )
+    print s
+    return '.duplibackdb_%s' % hashlib.sha1(s).hexdigest()
   
-def get_git_dir(uuid, host, path):
-  mount_point = get_mount_point_for_uuid(uuid)
-  git_db = get_git_db_name(uuid, host, path)
-  git_db_dir = os.path.join( mount_point, git_db )
-  print 'git_db_dir', git_db_dir
-  return git_db_dir
+def get_backupPath(uuid, host, path):
+    mount_point = get_mount_point_for_uuid(uuid)
+    duplicity_db = get_git_db_name(uuid, host, path)    
+    return os.path.join( mount_point, duplicity_db )
+    
+def get_backupUri(uuid, host, path):     
+    return 'file://%s' % get_backupPath(uuid, host, path)
   
 def gen_passwordCmd(password):
     if password:
@@ -184,18 +186,18 @@ def gen_passwordEncrypt(password):
     return hashStr
 
 def rmdir(tmp):
-  f = os.popen('rm -Rf "%s"' % tmp)
-  s = f.read().strip()
-  f.close()
-  if s:  print s
+    f = os.popen('rm -Rf "%s"' % tmp)
+    s = f.read().strip()
+    f.close()
+    if s:  print s
 
 
 def init_backup(uuid, host, path, password):
     assert test_backup_assertions(uuid, host, path, test_exists=False)
-    duplicity_dir = get_git_dir(uuid, host, path)
+    duplicity_dir = get_backupPath(uuid, host, path)
     os.mkdir(duplicity_dir)
     # write config info
-    f = open( os.path.join(duplicity_dir, 'flyback_properties.pickle'), 'w' )
+    f = open( os.path.join(duplicity_dir, PROPERTIES_FILE), 'w' )
     o = {
 		'uuid':uuid,
 		'host':host,
@@ -216,13 +218,14 @@ def init_backup(uuid, host, path, password):
 
 def backup(uuid, host, path, password):
     assert test_backup_assertions(uuid, host, path)
-    duplicity_dir = get_git_dir(uuid, host, path)
+    duplicity_dir = get_backupPath(uuid, host, path)
+    duplicity_uri = get_backupUri(uuid, host, path)
     # check that dir exists & create it if it does not
     if not os.path.exists(duplicity_dir):
         init_backup(uuid, host, path)
     # start backup  
     password_cmd = gen_passwordCmd(password)
-    duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s file://%s' % (password, password_cmd, path, duplicity_dir,)
+    duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s %s' % (password, password_cmd, path, duplicity_uri,)
     print '$', duplicity_cmd
     f = os.popen(duplicity_cmd)
     s = []
@@ -235,9 +238,9 @@ def backup(uuid, host, path, password):
 
 def get_preferences(uuid, host, path):
     preferences = dict(settings.DEFAULT_PREFERENCES)
-    duplicity_dir = get_git_dir(uuid, host, path)
+    duplicity_dir = get_backupPath(uuid, host, path)
     try:
-        f = open( os.path.join(duplicity_dir, 'flyback_preferences.pickle'), 'r' )
+        f = open( os.path.join(duplicity_dir, PREFERENCES_FILE), 'r' )
         o = pickle.load(f)
         f.close()
     except:
@@ -259,9 +262,9 @@ def save_preferences(uuid, host, path, preferences):
     # delta the difference with the old preferences
     pref = get_preferences( uuid, host, path )
     pref.update( preferences )
-    duplicity_dir = get_git_dir(uuid, host, path)
+    duplicity_dir = get_backupPath(uuid, host, path)
     try:
-        f = open( os.path.join(duplicity_dir, 'flyback_preferences.pickle'), 'w' )
+        f = open( os.path.join(duplicity_dir, PREFERENCES_FILE), 'w' )
         pickle.dump(pref, f)
         f.close()
     except:
@@ -271,8 +274,8 @@ def save_preferences(uuid, host, path, preferences):
 
 
 def get_revisions(uuid, host, path):
-    duplicity_dir = get_git_dir(uuid, host, path)
-    duplicity_cmd = 'duplicity collection-status file://%s' % (duplicity_dir)
+    duplicity_uri = get_backupUri(uuid, host, path)
+    duplicity_cmd = 'duplicity collection-status %s' % (duplicity_uri)
     print '$', duplicity_cmd
     f = os.popen(duplicity_cmd)
     s = []
@@ -316,9 +319,9 @@ def get_revisions(uuid, host, path):
 
 
 def get_files_for_revision(uuid, host, path, rev, password, callback):
-    duplicity_dir = get_git_dir(uuid, host, path)
+    duplicity_uri = get_backupUri(uuid, host, path)
     password_cmd = gen_passwordCmd(password)
-    duplicity_cmd = 'PASSPHRASE=%s duplicity list-current-files --time %s %s file://%s' % ( password, rev, password_cmd, duplicity_dir)
+    duplicity_cmd = 'PASSPHRASE=%s duplicity list-current-files --time %s %s %s' % ( password, rev, password_cmd, duplicity_uri)
     print '$', duplicity_cmd
     f = os.popen(duplicity_cmd)    
     for line in f:
@@ -339,11 +342,12 @@ def get_files_for_revision(uuid, host, path, rev, password, callback):
 
 
 def export_revision(uuid, host, path, rev, target_path, password):
-    tmp_dir = (tempfile.mkdtemp(suffix='_flyback') + 'archive-%s' % (rev)).replace(":",".")
-    duplicity_dir = get_git_dir(uuid, host, path)
+    prety_rev= rev.replace(":",".")
+    tmp_dir = (tempfile.mkdtemp(suffix='_dupliback') + 'archive-%s' % (prety_rev)).replace(":",".")
+    duplicity_uri = get_backupUri(uuid, host, path)
     password_cmd = gen_passwordCmd(password)
-    duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s file://%s %s' % ( password, rev, password_cmd, duplicity_dir,tmp_dir)
-    fn = '%s/flyback-archive_r%s.tar.gz' % (target_path, rev)
+    duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s %s %s' % ( password, rev, password_cmd, duplicity_uri,tmp_dir)
+    fn = '%s/dupliback-archive_r%s.tar.gz' % (target_path, prety_rev)
     cmd = duplicity_cmd + ' && tar -czvf %s %s' % (fn, tmp_dir)
     print '$', cmd
     f = os.popen(cmd)
@@ -356,14 +360,14 @@ def export_revision(uuid, host, path, rev, target_path, password):
     return fn, tmp_dir
 
 def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
-    duplicity_dir = get_git_dir(uuid, host, path)
+    duplicity_uri = get_backupUri(uuid, host, path)
     password_cmd = gen_passwordCmd(password)
     if restorePath == None:
         dst_dir = path;
-        duplicity_cmd = 'PASSPHRASE=%s duplicity restore --force --time %s %s file://%s %s' % ( password, rev, password_cmd, duplicity_dir,dst_dir)
+        duplicity_cmd = 'PASSPHRASE=%s duplicity restore --force --time %s %s %s %s' % ( password, rev, password_cmd, duplicity_uri,dst_dir)
     else:
         dst_dir = path + util.system_escape(restorePath)
-        duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s --file-to-restore %s file://%s %s' % ( password, rev, password_cmd, util.system_escape(restorePath[1:]), duplicity_dir, dst_dir )
+        duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s --file-to-restore %s %s %s' % ( password, rev, password_cmd, util.system_escape(restorePath[1:]), duplicity_uri, dst_dir )
     f = os.popen(duplicity_cmd)
     for line in f:
         sys.stdout.write(line)
@@ -375,9 +379,9 @@ def get_status(uuid, host, path, password):
     added = []
     modified = []
     deleted = []
-    duplicity_dir = get_git_dir(uuid, host, path)
+    duplicity_uri = get_backupUri(uuid, host, path)
     password_cmd = gen_passwordCmd(password)
-    duplicity_cmd = 'PASSPHRASE=%s duplicity %s --dry-run %s file://%s' % (password, password_cmd, path, duplicity_dir)
+    duplicity_cmd = 'PASSPHRASE=%s duplicity %s --dry-run %s %s' % (password, password_cmd, path, duplicity_uri)
     print '$', duplicity_cmd
     f = os.popen(duplicity_cmd)    
     for line in f:
@@ -399,8 +403,8 @@ def get_status(uuid, host, path, password):
 
 
 def delete_backup(uuid, host, path):
-    git_dir = get_git_dir(uuid, host, path)
-    cmd = 'rm -Rf "%s"' % git_dir
+    backup_dir = get_backupPath(uuid, host, path)
+    cmd = 'rm -Rf "%s"' % backup_dir
     print '$', cmd
     f = os.popen(cmd)
     for line in f:

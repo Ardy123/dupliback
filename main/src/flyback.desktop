@@ -6,10 +6,10 @@ Type=Application
 GenericName=Backup Utility
 Comment=Better than Apple's Time Machine for Linux
 Icon=/usr/share/icons/gnome/scalable/actions/stock_save.svg
-FilePattern=flyback;
-Exec=/usr/share/flyback/flyback.py
+FilePattern=dupliback;
+Exec=/usr/share/dupliback/dupliback.py
 Terminal=false
 StartupNotify=false
 Categories=Application;System;
 GenericName[en_GB]=Backup Utility
-
+GenericName[en_US]=Backup Utility

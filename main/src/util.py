@@ -9,16 +9,16 @@ def system_escape(string):
     return message
 
 def pango_escape(message):
-	assert isinstance(message, basestring)
-	message = "&amp;".join(message.split("&"))
-	message = "&lt;".join(message.split("<"))
-	message = "&gt;".join(message.split(">"))
-	return message
+    assert isinstance(message, basestring)
+    message = "&amp;".join(message.split("&"))
+    message = "&lt;".join(message.split("<"))
+    message = "&gt;".join(message.split(">"))
+    return message
 
 
 def open_file(fn):
-  import os
-  os.system( 'gnome-open "%s"' % fn )
+    import os
+    os.system( 'xdg-open "%s"' % fn )
   
   
 def humanize_bytes(bytes):
