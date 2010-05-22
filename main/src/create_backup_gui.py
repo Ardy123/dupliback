@@ -30,7 +30,7 @@ class GUI(object):
 		if entry:
 			uuid = model.get_value(entry, 3)
 			host = backup.get_hostname()
-			path = self.xml.get_widget('filechooserbutton').get_filename() #get_current_folder()
+			path = self.xml.get_widget('filechooserbutton').get_preview_uri()[7:]
 			print 'opening... drive:%s'%uuid, 'host:%s'%host, 'path:%s'%path
 			backup.init_backup(uuid, host, path, password)
 			self.register_gui( manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password) )
