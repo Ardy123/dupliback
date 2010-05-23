@@ -28,9 +28,15 @@ class GUI(object):
 		treeview_backups_widget = self.xml.get_widget('treeview_backups')
 		model, entry = treeview_backups_widget.get_selection().get_selected()
 		if entry:
+			chooserWidget = self.xml.get_widget('filechooserbutton') 
 			uuid = model.get_value(entry, 3)
-			host = backup.get_hostname()
-			path = self.xml.get_widget('filechooserbutton').get_preview_uri()[7:]
+			host = backup.get_hostname()			
+			path = chooserWidget.get_preview_uri()
+			# strang hack to work around bug with get_filename where it does not always return the correct value
+			if path == None:
+				path = chooserWidget.get_filename()
+			else:
+				path = path[7:]
 			print 'opening... drive:%s'%uuid, 'host:%s'%host, 'path:%s'%path
 			backup.init_backup(uuid, host, path, password)
 			self.register_gui( manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password) )
