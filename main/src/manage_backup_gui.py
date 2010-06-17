@@ -101,24 +101,10 @@ class GUI(object):
         T().start()        
 
     def restore_selection(self, widget, selection=None ):  
-        gui = self
-        rev = self.get_selected_revision()
-        class T(threading.Thread):
-            def run(self):         
-                for numericPath in selection[1]:
-                    # construct a string path
-                    path = ""
-                    for ndx in xrange( 0, len(numericPath) ):
-                        tpl = () + numericPath[:ndx + 1]
-                        itr = selection[0].get_iter( tpl )
-                        path += ( "/"+ selection[0].get_value(itr,0) )
-                    backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password, path )
-                messageBox.takedownProgressBar()
-        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Backing Up, Please Wait' )
-        T().start()                            
+        self.start_restore(selection)
         return
     
-    def treeview_mouse_notify(self, widget, event):
+    def fileview_mouse_notify(self, widget, event):
         if event.button == 3:            
             selection =  widget.get_selection().get_selected_rows()
             if selection[1] != []:
@@ -126,6 +112,21 @@ class GUI(object):
                 menu = gtk.Menu()  
                 restoreSelection = gtk.MenuItem("Restore Selection")
                 restoreSelection.connect("activate", self.restore_selection, selection )
+                menu.append( restoreSelection )                        
+                # display menu
+                restoreSelection.show()
+                menu.popup( None, None, None, event.button, event.time )
+                return True
+        return False
+
+    def revview_mouse_notify(self, widget, event):
+        if event.button == 3:            
+            selection =  widget.get_selection().get_selected_rows()
+            if selection[1] != []:
+                # create menu
+                menu = gtk.Menu()  
+                restoreSelection = gtk.MenuItem("Restore Moment(revision)")
+                restoreSelection.connect("activate", self.restore_selection, None )
                 menu.append( restoreSelection )                        
                 # display menu
                 restoreSelection.show()
@@ -157,19 +158,31 @@ class GUI(object):
                 messageBox.takedownProgressBar()
                 gtk.gdk.threads_leave()
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Backing Up, Please Wait' )
-        T().start()
-                
-    def start_restore(self):        
-        rev = self.get_selected_revision()
+        T().start()                      
+
+    def start_restore(self, selection=None ):  
         gui = self
+        rev = self.get_selected_revision()
         class T(threading.Thread):
-            def run(self):
-                backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password)                
-                gtk.gdk.threads_enter()
+            def run(self):     
+                if selection != None:    
+                    for numericPath in selection[1]:
+                        # construct a string path
+                        path = ""
+                        for ndx in xrange( 0, len(numericPath) ):
+                            tpl = () + numericPath[:ndx + 1]
+                            itr = selection[0].get_iter( tpl )
+                            path += ( "/"+ selection[0].get_value(itr,0) )
+                        backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password, path )
+                else:
+                    backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password)                
+                    gtk.gdk.threads_enter()
+                    messageBox.takedownProgressBar()
+                    gtk.gdk.threads_leave()
                 messageBox.takedownProgressBar()
-                gtk.gdk.threads_leave()
-        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Exporting Backup, Please Wait' )
-        T().start()            
+        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Restoring, Please Wait' )
+        T().start()                            
+        return
         
     def start_export(self):
         dialog = gtk.FileChooserDialog(title='Select folder to save archive to...', parent=None, action=gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OPEN, gtk.RESPONSE_OK), backend=None)
@@ -277,13 +290,14 @@ class GUI(object):
         treeview_revisions_widget.set_model(treeview_revisions_model)
         treeview_revisions_widget.connect( 'cursor-changed', self.update_files )
         treeview_revisions_widget.set_property('rules-hint', True)
+        treeview_revisions_widget.connect("button_press_event", self.revview_mouse_notify)
         self.update_revisions()
     
         # file list
         treeview_files_widget = self.xml.get_widget('treeview_files')
         treeview_files_model = gtk.TreeStore( str, str )      
         renderer = gtk.CellRendererText()
-        renderer.set_property('font','monospace')
+        renderer.set_property('font','arial')
         filesColumn = gtk.TreeViewColumn('Files', renderer, markup=0)
         filesColumn.set_resizable(True)
         dateColumn = gtk.TreeViewColumn('Date', renderer, markup=1)
@@ -294,7 +308,7 @@ class GUI(object):
         treeview_files_widget.set_property('rules-hint', True)
         treeview_files_model.append( None, [('please select a revision to view... (on the left)'),('')] )
         treeview_files_widget.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
-        treeview_files_widget.connect("button_press_event", self.treeview_mouse_notify)
+        treeview_files_widget.connect("button_press_event", self.fileview_mouse_notify)
 
         # task list
         running_tasks_widget = self.xml.get_widget('running_tasks')

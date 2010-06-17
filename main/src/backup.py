@@ -349,7 +349,6 @@ def export_revision(uuid, host, path, rev, target_path, password):
     duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s %s %s' % ( password, rev, password_cmd, duplicity_uri,tmp_dir)
     fn = '%s/dupliback-archive_r%s.tar.gz' % (target_path, prety_rev)
     cmd = duplicity_cmd + ' && tar -czvf %s %s' % (fn, tmp_dir)
-    print '$', cmd
     f = os.popen(cmd)
     s = []
     for line in f:
@@ -367,7 +366,7 @@ def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
         duplicity_cmd = 'PASSPHRASE=%s duplicity restore --force --time %s %s %s %s' % ( password, rev, password_cmd, duplicity_uri,dst_dir)
     else:
         dst_dir = path + util.system_escape(restorePath)
-        duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s --file-to-restore %s %s %s' % ( password, rev, password_cmd, util.system_escape(restorePath[1:]), duplicity_uri, dst_dir )
+        duplicity_cmd = 'PASSPHRASE=%s duplicity restore --force --time %s %s --file-to-restore %s %s %s' % ( password, rev, password_cmd, util.system_escape(restorePath[1:]), duplicity_uri, dst_dir )
     f = os.popen(duplicity_cmd)
     for line in f:
         sys.stdout.write(line)
