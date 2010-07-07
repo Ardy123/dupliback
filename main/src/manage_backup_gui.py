@@ -26,12 +26,14 @@ class GUI(object):
             treeview_revisions_model.append((s,isoTime))
         return
 
-    def update_files(self,a=None):
-        treeview_files_view = self.xml.get_widget('treeview_files')
+    def update_files(self,a=None):                         
+        treeview_files_view = self.xml.get_widget('treeview_files')        
         treeview_files_model = treeview_files_view.get_model()
         treeview_files_model.clear()        
         treeview_files_model.append( None, [('loading files... (please wait)'),('')] )
-    
+        #clear the old tree view selection
+        treeview_files_view.get_selection().unselect_all();
+        # get files based on the rev selection
         model, entry = a.get_selection().get_selected()
         if not entry:
             treeview_files_model.clear()
@@ -250,7 +252,12 @@ class GUI(object):
     def open_about(self):
         about_dialoge = about_gui.GUI(self.register_gui, self.unregister_gui, self.main_window)
         
-        
+    def restore_button_notify(self, widget):
+        treeview_files_widget = self.xml.get_widget('treeview_files')        
+        selection = treeview_files_widget.get_selection().get_selected_rows()
+        if len(selection[1]) == 0: selection = None
+        self.start_restore(selection)
+          
     def __init__(self, register_gui, unregister_gui, uuid, host, path, password):
 
         self.register_gui = register_gui
@@ -274,7 +281,8 @@ class GUI(object):
         # toolbar
         self.xml.get_widget('toolbutton_backup').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
         self.xml.get_widget('toolbutton_backup').connect('clicked', lambda x: self.start_backup() )
-        self.xml.get_widget('toolbutton_restore').connect('clicked', lambda x: self.start_restore() )        
+        #self.xml.get_widget('toolbutton_restore').connect('clicked', lambda x: self.start_restore() )
+        self.xml.get_widget('toolbutton_restore').connect('clicked', self.restore_button_notify )        
         self.xml.get_widget('toolbutton_status').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
         self.xml.get_widget('toolbutton_status').connect('clicked', lambda x: self.start_status() )
         self.xml.get_widget('toolbutton_export').connect('clicked', lambda x: self.start_export() )
