@@ -185,6 +185,17 @@ def gen_passwordEncrypt(password):
         hashStr = ''
     return hashStr
 
+def gen_exclusionCmd( preferences ):
+    excludeCmd = ''
+    for prefItem, prefValue in preferences.iteritems():
+        if prefValue == True:
+            excludeSubCmd = ''
+            if ( settings.FILEEXT_EXCLUDE_MAP.has_key(prefItem)):
+                for fileExt in settings.FILEEXT_EXCLUDE_MAP[prefItem]:
+                    excludeSubCmd += '--exclude \'' + fileExt + '\' '
+            excludeCmd += excludeSubCmd
+    return excludeCmd
+    
 def rmdir(tmp):
     f = os.popen('rm -Rf "%s"' % tmp)
     s = f.read().strip()
@@ -225,7 +236,8 @@ def backup(uuid, host, path, password):
         init_backup(uuid, host, path)
     # start backup  
     password_cmd = gen_passwordCmd(password)
-    duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s %s' % (password, password_cmd, path, duplicity_uri,)
+    preferences_cmd = gen_exclusionCmd(get_preferences(uuid, host, path))
+    duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s %s %s' % (password, preferences_cmd, password_cmd, path, duplicity_uri,)
     print '$', duplicity_cmd
     f = os.popen(duplicity_cmd)
     s = []
