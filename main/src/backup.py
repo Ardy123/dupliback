@@ -238,7 +238,9 @@ def backup(uuid, host, path, password):
     preferences_cmd = gen_exclusionCmd(get_preferences(uuid, host, path))
     duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s %s %s' % (password, preferences_cmd, password_cmd, path, duplicity_uri,)       
     f = os.popen(duplicity_cmd)
-    f.read()
+    output = f.read()
+    if settings.PROGRAM_DEBUG:        
+            sys.stdout.write(output)
     f.close()
     return
              
@@ -354,7 +356,9 @@ def export_revision(uuid, host, path, rev, target_path, password):
     fn = '%s/dupliback-archive_r%s.tar.gz' % (target_path, prety_rev)
     cmd = duplicity_cmd + ' && tar -czvf %s %s' % (fn, tmp_dir)
     f = os.popen(cmd)
-    f.read()
+    output = f.read()
+    if settings.PROGRAM_DEBUG:        
+            sys.stdout.write(output)
     f.close();
     return fn, tmp_dir
 
@@ -368,7 +372,9 @@ def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
         dst_dir = path + util.system_escape(restorePath)
         duplicity_cmd = 'PASSPHRASE=%s duplicity restore --force --time %s %s --file-to-restore %s %s %s' % ( password, rev, password_cmd, util.system_escape(restorePath[1:]), duplicity_uri, dst_dir )
     f = os.popen(duplicity_cmd)
-    f.read()
+    output = f.read()
+    if settings.PROGRAM_DEBUG:        
+            sys.stdout.write(output)
     f.close()    
     return
 
@@ -383,7 +389,8 @@ def get_status(uuid, host, path, password):
     print '$', duplicity_cmd
     f = os.popen(duplicity_cmd)    
     for line in f:
-#        sys.stdout.write(line)            
+        if settings.PROGRAM_DEBUG: 
+            sys.stdout.write(line)            
         if line.startswith('DeletedFiles'):
             deleted.append( 'Deleted Files: %s' % (line.split(' ')[1] ) )
         elif line.startswith('ChangedFiles'):
@@ -405,7 +412,9 @@ def delete_backup(uuid, host, path):
     cmd = 'rm -Rf "%s"' % backup_dir
     print '$', cmd
     f = os.popen(cmd)
-    f.read()
+    output = f.read()
+    if settings.PROGRAM_DEBUG:        
+            sys.stdout.write(output)
     f.close()
   
 

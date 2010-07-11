@@ -1,5 +1,6 @@
 PROGRAM_NAME = 'dupli.back'
 PROGRAM_VERSION = '0.2.4'
+PROGRAM_DEBUG = False
 
 DEFAULT_PREFERENCES = {
     'app_version': PROGRAM_VERSION,
