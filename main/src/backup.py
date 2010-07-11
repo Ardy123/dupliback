@@ -337,8 +337,9 @@ def get_files_for_revision(uuid, host, path, rev, password, callback):
     print '$', duplicity_cmd
     f = os.popen(duplicity_cmd)    
     for line in f:
+        print line
         lineSplit = line.split( ' ', 5 )
-        if lineSplit[0] != 'Last':
+        if lineSplit[0] != 'Last' and lineSplit[0] != 'Local':
             # remove blank entries from the list
             nBlankLines = lineSplit.count('')
             if nBlankLines:
