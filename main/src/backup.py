@@ -236,7 +236,7 @@ def backup(uuid, host, path, password):
     # start backup  
     password_cmd = gen_passwordCmd(password)
     preferences_cmd = gen_exclusionCmd(get_preferences(uuid, host, path))
-    duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s %s %s' % (password, preferences_cmd, password_cmd, path, duplicity_uri,)       
+    duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s %s %s --allow-source-mismatch' % (password, preferences_cmd, password_cmd, path, duplicity_uri,)       
     f = os.popen(duplicity_cmd)
     output = f.read()
     if settings.PROGRAM_DEBUG:        
