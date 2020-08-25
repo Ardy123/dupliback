@@ -1,25 +1,32 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.22.2 -->
 <interface>
-  <!-- interface-requires gtk+ 2.12 -->
-  <!-- interface-naming-policy project-wide -->
+  <requires lib="gtk+" version="3.0"/>
   <object class="GtkWindow" id="window">
+    <property name="can_focus">False</property>
     <property name="window_position">center</property>
     <property name="default_width">800</property>
     <property name="default_height">480</property>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
     <child>
-      <object class="GtkVBox" id="vbox1">
+      <object class="GtkBox">
         <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
         <child>
           <object class="GtkToolbar" id="toolbar1">
             <property name="visible">True</property>
+            <property name="can_focus">False</property>
             <child>
               <object class="GtkToolButton" id="toolbutton_backup">
                 <property name="visible">True</property>
-                <property name="tooltip-text" translatable="yes">bookmark a new moment (backup)</property>
+                <property name="can_focus">False</property>
+                <property name="tooltip_text" translatable="yes">bookmark a new moment (backup)</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Backup</property>
                 <property name="use_underline">True</property>
-                <property name="icon">../images/Backup.png</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -30,11 +37,11 @@
               <object class="GtkToolButton" id="toolbutton_restore">
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
-                <property name="tooltip-text" translatable="yes">travel to a moment (restore)</property>
+                <property name="can_focus">False</property>
+                <property name="tooltip_text" translatable="yes">travel to a moment (restore)</property>
                 <property name="is_important">True</property>
-                <property name="label" translatable="yes">Status</property>
+                <property name="label" translatable="yes">Restore</property>
                 <property name="use_underline">True</property>
-                <property name="icon">../images/Restore.png</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -45,12 +52,12 @@
               <object class="GtkToolButton" id="toolbutton_export">
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
+                <property name="can_focus">False</property>
                 <property name="has_tooltip">True</property>
-                <property name="tooltip-text" translatable="yes">export a moment (exports to a tgz)</property>
+                <property name="tooltip_text" translatable="yes">export a moment (exports to a tgz)</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Export</property>
                 <property name="use_underline">True</property>
-                <property name="icon">../images/package.png</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -61,8 +68,9 @@
               <object class="GtkToolButton" id="toolbutton_explore">
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
+                <property name="can_focus">False</property>
                 <property name="has_tooltip">True</property>
-                <property name="tooltip-text" translatable="yes">exports the selected mement to a temporary folder and opens it</property>
+                <property name="tooltip_text" translatable="yes">exports the selected mement to a temporary folder and opens it</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Explore</property>
                 <property name="use_underline">True</property>
@@ -76,8 +84,9 @@
             <child>
               <object class="GtkToolButton" id="toolbutton_status">
                 <property name="visible">True</property>
+                <property name="can_focus">False</property>
                 <property name="has_tooltip">True</property>
-                <property name="tooltip-text" translatable="yes">retrieve changes since last bookmarked moment</property>
+                <property name="tooltip_text" translatable="yes">retrieve changes since last bookmarked moment</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Status</property>
                 <property name="use_underline">True</property>
@@ -91,6 +100,7 @@
             <child>
               <object class="GtkToolButton" id="toolbutton_preferences">
                 <property name="visible">True</property>
+                <property name="can_focus">False</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Preferences</property>
                 <property name="use_underline">True</property>
@@ -104,6 +114,7 @@
             <child>
               <object class="GtkToolButton" id="toolbutton_about">
                 <property name="visible">True</property>
+                <property name="can_focus">False</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">About</property>
                 <property name="use_underline">True</property>
@@ -117,15 +128,18 @@
           </object>
           <packing>
             <property name="expand">False</property>
+            <property name="fill">True</property>
             <property name="position">0</property>
           </packing>
         </child>
         <child>
-          <object class="GtkHBox" id="hbox1">
+          <object class="GtkBox">
             <property name="visible">True</property>
+            <property name="can_focus">False</property>
             <child>
               <object class="GtkLabel" id="label2">
                 <property name="visible">True</property>
+                <property name="can_focus">False</property>
                 <property name="label" translatable="yes">Drive:</property>
               </object>
               <packing>
@@ -141,7 +155,7 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="editable">False</property>
-                <property name="invisible_char">&#x25CF;</property>
+                <property name="invisible_char">●</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -153,6 +167,7 @@
             <child>
               <object class="GtkLabel" id="label3">
                 <property name="visible">True</property>
+                <property name="can_focus">False</property>
                 <property name="label" translatable="yes">Path:</property>
               </object>
               <packing>
@@ -167,9 +182,11 @@
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="editable">False</property>
-                <property name="invisible_char">&#x25CF;</property>
+                <property name="invisible_char">●</property>
               </object>
               <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
                 <property name="padding">4</property>
                 <property name="position">3</property>
               </packing>
@@ -177,12 +194,12 @@
           </object>
           <packing>
             <property name="expand">False</property>
-            <property name="padding">4</property>
+            <property name="fill">True</property>
             <property name="position">1</property>
           </packing>
         </child>
         <child>
-          <object class="GtkHPaned" id="hpaned1">
+          <object class="GtkPaned" id="hpaned1">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="position">240</property>
@@ -191,12 +208,13 @@
               <object class="GtkScrolledWindow" id="scrolledwindow2">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="hscrollbar_policy">automatic</property>
-                <property name="vscrollbar_policy">automatic</property>
                 <child>
                   <object class="GtkTreeView" id="treeview_revisions">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection"/>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -209,12 +227,13 @@
               <object class="GtkScrolledWindow" id="scrolledwindow1">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
-                <property name="hscrollbar_policy">automatic</property>
-                <property name="vscrollbar_policy">automatic</property>
                 <child>
                   <object class="GtkTreeView" id="treeview_files">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection"/>
+                    </child>
                   </object>
                 </child>
               </object>
@@ -225,6 +244,8 @@
             </child>
           </object>
           <packing>
+            <property name="expand">True</property>
+            <property name="fill">True</property>
             <property name="position">2</property>
           </packing>
         </child>
@@ -232,9 +253,13 @@
           <object class="GtkTreeView" id="running_tasks">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
+            <child internal-child="selection">
+              <object class="GtkTreeSelection"/>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
+            <property name="fill">True</property>
             <property name="padding">1</property>
             <property name="position">3</property>
           </packing>

@@ -1,5 +1,5 @@
 import os
-from gi.repository import Gtk, GObject, Gdk, GLib
+from gi.repository import Gtk, GObject, Gdk, GLib, GdkPixbuf
 
 import backup
 import manage_backup_gui
@@ -26,10 +26,10 @@ class GUI(object):
 		return
 		
 	def init_backup(self,password):
-		treeview_backups_widget = self.xml.get_widget('treeview_backups')
+		treeview_backups_widget = self.gtkbuilder.get_object('treeview_backups')
 		model, entry = treeview_backups_widget.get_selection().get_selected()
 		if entry:
-			chooserWidget = self.xml.get_widget('filechooserbutton') 
+			chooserWidget = self.gtkbuilder.get_object('filechooserbutton')
 			uuid = model.get_value(entry, 3)
 			host = backup.get_hostname()			
 			path = chooserWidget.get_preview_uri()
@@ -50,7 +50,7 @@ class GUI(object):
 			md.destroy()
 
 	def refresh_device_list(self):
-		treeview_backups_model = self.xml.get_widget('treeview_backups').get_model()
+		treeview_backups_model = self.gtkbuilder.get_object('treeview_backups').get_model()
 		treeview_backups_model.clear()
 		writable_devices = backup.get_writable_devices()
 		for uuid in writable_devices:
@@ -68,28 +68,29 @@ class GUI(object):
 			icon = self.main_window.render_icon(Gtk.STOCK_INFO, Gtk.IconSize.DIALOG)
 			s = 'In order to create a backup, dupli.back needs a hard drive\nother than the one your computer boots from.\n(preferably external and removable)	Please plug one\ninto a free USB or eSATA port...'
 			treeview_backups_model.append( (icon, s, False, None) )
-			self.xml.get_widget('button_new').set_sensitive(False)
+			self.gtkbuilder.get_object('button_new').set_sensitive(False)
 		else:
-			self.xml.get_widget('button_new').set_sensitive(True)
+			self.gtkbuilder.get_object('button_new').set_sensitive(True)
 
 	def __init__(self, register_gui, unregister_gui):
 		print(util.RUN_FROM_DIR)
 		self.register_gui = register_gui
 		self.unregister_gui = unregister_gui
-		self.xml = Gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'create_backup.glade' ) )
-		self.main_window = self.xml.get_widget('window')
+		self.gtkbuilder = Gtk.Builder()
+		self.gtkbuilder.add_from_file( os.path.join( util.RUN_FROM_DIR, 'glade', 'create_backup.glade' ) )
+		self.main_window = self.gtkbuilder.get_object('window')
 		self.main_window.connect("delete-event", self.close )
 		icon = self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON)
 		self.main_window.set_icon(icon)
 		self.main_window.set_title('%s v%s - Create Backup' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION))
 		
 		# buttons
-		self.xml.get_widget('button_cancel').connect('clicked', self.close)
-		self.xml.get_widget('button_new').connect('clicked', self.init_passwordSet)
+		self.gtkbuilder.get_object('button_cancel').connect('clicked', self.close)
+		self.gtkbuilder.get_object('button_new').connect('clicked', self.init_passwordSet)
 		
 		# setup list
 		treeview_backups_model = Gtk.ListStore( GdkPixbuf.Pixbuf, str, bool, str )
-		treeview_backups_widget = self.xml.get_widget('treeview_backups')
+		treeview_backups_widget = self.gtkbuilder.get_object('treeview_backups')
 		renderer = Gtk.CellRendererPixbuf()
 		renderer.set_property('xpad', 4)
 		renderer.set_property('ypad', 4)

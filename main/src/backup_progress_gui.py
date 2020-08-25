@@ -21,11 +21,12 @@ class GUI(object):
     def __init__(self, register_gui, unregister_gui, parentWnd, msg):
         print('progress bar put up')
         self.register_gui = register_gui
-        self.unregister_gui = unregister_gui          
-        self.xml = Gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'backup_progress.glade' ) )
-        self.main_window = self.xml.get_widget('messagedialog1')
-        self.progress_bar= self.xml.get_widget('progress_bar')
-        self.message = self.xml.get_widget('progress_messasge')
+        self.unregister_gui = unregister_gui
+        self.gtkbuilder = Gtk.Builder()
+        self.gtkbuilder.add_from_file( os.path.join( util.RUN_FROM_DIR, 'glade', 'backup_progress.glade' ) )
+        self.main_window = self.gtkbuilder.get_object('messagedialog1')
+        self.progress_bar= self.gtkbuilder.get_object('progress_bar')
+        self.message = self.gtkbuilder.get_object('progress_messasge')
         # set the progress message
         if msg:
             self.message.set_label(msg)

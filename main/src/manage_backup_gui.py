@@ -3,7 +3,7 @@ import threading
 import time
 import tempfile
 import os
-from gi.repository import Gtk, GObject, Gdk, GLib
+from gi.repository import Gtk, GObject, Gdk, GLib, GdkPixbuf
 
 import backup, settings, util, backup_progress_gui, backup_status_gui, about_gui
 
@@ -19,7 +19,7 @@ class GUI(object):
     
     def update_revisions(self):
         revisions = backup.get_revisions(self.uuid, self.host, self.path)
-        treeview_revisions_widget = self.xml.get_widget('treeview_revisions')
+        treeview_revisions_widget = self.gtkbuilder.get_object('treeview_revisions')
         treeview_revisions_model = treeview_revisions_widget.get_model()
         treeview_revisions_model.clear()
         for rev in revisions:
@@ -32,27 +32,26 @@ class GUI(object):
         return
 
     def update_files(self,a=None):                         
-        treeview_files_view = self.xml.get_widget('treeview_files')        
+        treeview_files_view = self.gtkbuilder.get_object('treeview_files')
         treeview_files_model = treeview_files_view.get_model()
         treeview_files_model.clear()        
         treeview_files_model.append( None, [('loading files... (please wait)'),('')] )
         #clear the old tree view selection
-        treeview_files_view.get_selection().unselect_all();
+        treeview_files_view.get_selection().unselect_all()
         # get files based on the rev selection
         model, entry = a.get_selection().get_selected()
         if not entry:
             treeview_files_model.clear()
             return
-        self.xml.get_widget('toolbutton_export').set_sensitive( True )
-        self.xml.get_widget('toolbutton_restore').set_sensitive( True )
-        self.xml.get_widget('toolbutton_explore').set_sensitive( True )
+        self.gtkbuilder.get_object('toolbutton_export').set_sensitive( True )
+        self.gtkbuilder.get_object('toolbutton_restore').set_sensitive( True )
+        self.gtkbuilder.get_object('toolbutton_explore').set_sensitive( True )
         rev = entry and model.get_value(entry, 1)
         
         icon = self.main_window.render_icon(Gtk.STOCK_FIND, Gtk.IconSize.MENU)
-        running_tasks_model = self.xml.get_widget('running_tasks').get_model()
+        running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
         i = running_tasks_model.append( ( icon, util.pango_escape('loading files for rev: '+self.path), datetime.datetime.now(), '' ) )
         replacmentModel = Gtk.TreeStore( str, str )
-        replacmentModel.set_default_sort_func(None)
         gui = self
             
         class T(threading.Thread):
@@ -142,7 +141,7 @@ class GUI(object):
         return False
     
     def get_selected_revision(self):
-        model, entry = self.xml.get_widget('treeview_revisions').get_selection().get_selected()
+        model, entry = self.gtkbuilder.get_object('treeview_revisions').get_selection().get_selected()
         if not entry: return
         rev = entry and model.get_value(entry, 1)
         return rev
@@ -153,7 +152,7 @@ class GUI(object):
 
     def start_backup(self):
         icon = self.main_window.render_icon(Gtk.STOCK_SAVE, Gtk.IconSize.MENU)
-        running_tasks_model = self.xml.get_widget('running_tasks').get_model()
+        running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
         i = running_tasks_model.append( ( icon, util.pango_escape('backing up: '+self.path), datetime.datetime.now(), '' ) )
         gui = self
         class T(threading.Thread):
@@ -176,7 +175,7 @@ class GUI(object):
                     for numericPath in selection[1]:
                         # construct a string path
                         path = ""
-                        for ndx in xrange( 0, len(numericPath) ):
+                        for ndx in range( 0, len(numericPath) ):
                             tpl = () + numericPath[:ndx + 1]
                             itr = selection[0].get_iter( tpl )
                             path += ( "/"+ selection[0].get_value(itr,0) )
@@ -198,7 +197,7 @@ class GUI(object):
             target_dir = dialog.get_filename()
             rev = self.get_selected_revision()
             icon = self.main_window.render_icon(Gtk.STOCK_FLOPPY, Gtk.IconSize.MENU)
-            running_tasks_model = self.xml.get_widget('running_tasks').get_model()
+            running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
             i = running_tasks_model.append( ( icon, util.pango_escape('exporting selected revision to: '+target_dir), datetime.datetime.now(), '' ) )
             gui = self
             class T(threading.Thread):
@@ -220,7 +219,7 @@ class GUI(object):
         target_dir = tempfile.mkdtemp(suffix='_duplibackback')
         rev = self.get_selected_revision()
         icon = self.main_window.render_icon(Gtk.STOCK_DIRECTORY, Gtk.IconSize.MENU)
-        running_tasks_model = self.xml.get_widget('running_tasks').get_model()
+        running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
         i = running_tasks_model.append( ( icon, util.pango_escape('preparing folder for exploration: '+target_dir), datetime.datetime.now(), '' ) )
         gui = self
 
@@ -238,7 +237,7 @@ class GUI(object):
     
     def start_status(self):
         icon = self.main_window.render_icon(Gtk.STOCK_FIND, Gtk.IconSize.MENU)
-        running_tasks_model = self.xml.get_widget('running_tasks').get_model()
+        running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
         i = running_tasks_model.append( ( icon, util.pango_escape('retrieving folder status since last backup...'), datetime.datetime.now(), '' ) )       
         gui = self  
         class T(threading.Thread):
@@ -258,7 +257,7 @@ class GUI(object):
         about_dialoge = about_gui.GUI(self.register_gui, self.unregister_gui, self.main_window)
         
     def restore_button_notify(self, widget):
-        treeview_files_widget = self.xml.get_widget('treeview_files')        
+        treeview_files_widget = self.gtkbuilder.get_object('treeview_files')
         selection = treeview_files_widget.get_selection().get_selected_rows()
         if len(selection[1]) == 0: selection = None
         self.start_restore(selection)
@@ -273,31 +272,31 @@ class GUI(object):
         self.password = password
         
         self.rev_files_map = {}
-  
-        self.xml = Gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'manage_backup.glade' ) )
-        self.main_window = self.xml.get_widget('window')
+
+        self.gtkbuilder = Gtk.Builder()
+        self.gtkbuilder.add_from_file( os.path.join( util.RUN_FROM_DIR, 'glade', 'manage_backup.glade' ) )
+        self.main_window = self.gtkbuilder.get_object('window')
         self.main_window.connect("delete-event", self.close )
         icon = self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON)
         self.main_window.set_icon(icon)
-        self.xml.get_widget('entry_drive_name').set_text( backup.get_drive_name(self.uuid) )
-        self.xml.get_widget('entry_path').set_text( self.host +':'+ self.path )
+        self.gtkbuilder.get_object('entry_drive_name').set_text( backup.get_drive_name(self.uuid) )
+        self.gtkbuilder.get_object('entry_path').set_text( self.host +':'+ self.path )
         self.main_window.set_title('%s v%s - Manage Backup' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION))
     
         # toolbar
-        self.xml.get_widget('toolbutton_backup').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
-        self.xml.get_widget('toolbutton_backup').connect('clicked', lambda x: self.start_backup() )
-        #self.xml.get_widget('toolbutton_restore').connect('clicked', lambda x: self.start_restore() )
-        self.xml.get_widget('toolbutton_restore').connect('clicked', self.restore_button_notify )        
-        self.xml.get_widget('toolbutton_status').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
-        self.xml.get_widget('toolbutton_status').connect('clicked', lambda x: self.start_status() )
-        self.xml.get_widget('toolbutton_export').connect('clicked', lambda x: self.start_export() )
-        self.xml.get_widget('toolbutton_explore').connect('clicked', lambda x: self.start_explore() )
-        self.xml.get_widget('toolbutton_preferences').connect('clicked', lambda x: self.open_preferences() )
-        self.xml.get_widget('toolbutton_about').connect('clicked', lambda x: self.open_about() )
+        self.gtkbuilder.get_object('toolbutton_backup').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
+        self.gtkbuilder.get_object('toolbutton_backup').connect('clicked', lambda x: self.start_backup() )
+        self.gtkbuilder.get_object('toolbutton_restore').connect('clicked', self.restore_button_notify )
+        self.gtkbuilder.get_object('toolbutton_status').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
+        self.gtkbuilder.get_object('toolbutton_status').connect('clicked', lambda x: self.start_status() )
+        self.gtkbuilder.get_object('toolbutton_export').connect('clicked', lambda x: self.start_export() )
+        self.gtkbuilder.get_object('toolbutton_explore').connect('clicked', lambda x: self.start_explore() )
+        self.gtkbuilder.get_object('toolbutton_preferences').connect('clicked', lambda x: self.open_preferences() )
+        self.gtkbuilder.get_object('toolbutton_about').connect('clicked', lambda x: self.open_about() )
     
         # revision list
         treeview_revisions_model = Gtk.ListStore( str, str )
-        treeview_revisions_widget = self.xml.get_widget('treeview_revisions')
+        treeview_revisions_widget = self.gtkbuilder.get_object('treeview_revisions')
         renderer = Gtk.CellRendererText()        
         treeview_revisions_widget.append_column( Gtk.TreeViewColumn('History', renderer, markup=0) )
         treeview_revisions_widget.set_model(treeview_revisions_model)
@@ -307,7 +306,7 @@ class GUI(object):
         self.update_revisions()
     
         # file list
-        treeview_files_widget = self.xml.get_widget('treeview_files')
+        treeview_files_widget = self.gtkbuilder.get_object('treeview_files')
         treeview_files_model = Gtk.TreeStore( str, str )      
         renderer = Gtk.CellRendererText()
         renderer.set_property('font','arial')
@@ -324,7 +323,7 @@ class GUI(object):
         treeview_files_widget.connect("button_press_event", self.fileview_mouse_notify)
 
         # task list
-        running_tasks_widget = self.xml.get_widget('running_tasks')
+        running_tasks_widget = self.gtkbuilder.get_object('running_tasks')
         running_tasks_model = Gtk.ListStore( GdkPixbuf.Pixbuf, str, GObject.TYPE_PYOBJECT, str )
         renderer = Gtk.CellRendererPixbuf()
         renderer.set_property('xpad', 4)

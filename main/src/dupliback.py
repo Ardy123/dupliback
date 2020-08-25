@@ -65,8 +65,7 @@ if __name__=='__main__':
       print(' $ python dupliback.py <drive_uuid> <path>')
       print()
   else:
-    from gi.repository import Gtk, GObject, Gdk, GLib
-    #gnome.init( settings.PROGRAM_NAME, settings.PROGRAM_VERSION )
+    from gi.repository import Gtk, GObject, Gdk
     GObject.threads_init()
     Gdk.threads_init()
     launch_select_backup_gui()
