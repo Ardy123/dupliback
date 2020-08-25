@@ -1,4 +1,5 @@
-import gtk.glade, os
+import os
+from gi.repository import Gtk
 import util
 import backup
 
@@ -64,7 +65,7 @@ class GUI(object):
         return
     
     def passwordCheck_textTyped(self, a=None, b=None):
-        hashPswd = backup.gen_passwordEncrypt( self.check_password_window['password_entry_question'].get_text() ) 
+        hashPswd = backup.gen_passwordEncrypt( self.check_password_window['password_entry_question'].get_text().encode('utf-8') )
         if hashPswd == self.check_password_window['password']:
             self.check_password_window['pass_err_img'].hide()
             self.check_password_window['pass_err_labl'].hide()
@@ -88,17 +89,18 @@ class GUI(object):
     
     def __init__(self, register_gui, unregister_gui):
         self.register_gui = register_gui
-        self.unregister_gui = unregister_gui          
-        self.xml = gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'password_entry.glade' ) )                
+        self.unregister_gui = unregister_gui
+        self.gtkbuilder = Gtk.Builder()
+        self.gtkbuilder.add_from_file( os.path.join( util.RUN_FROM_DIR, 'glade', 'password_entry.glade' ) )
         # Setup New Password Window
         self.new_password_window = {}
-        self.new_password_window['main_window'] = self.xml.get_widget('new_password')
-        self.new_password_window['password_entry1'] = self.xml.get_widget('password_entry1')
-        self.new_password_window['password_entry2'] = self.xml.get_widget('password_entry2')
-        self.new_password_window['password_missing'] = self.xml.get_widget('password_missing')
-        self.new_password_window['password_mismatch'] = self.xml.get_widget('password_mismatch')
-        self.new_password_window['password_checkbutton'] = self.xml.get_widget('password_checkbutton')
-        self.new_password_window['ok_button'] = self.xml.get_widget('ok_button')
+        self.new_password_window['main_window'] = self.gtkbuilder.get_object('new_password')
+        self.new_password_window['password_entry1'] = self.gtkbuilder.get_object('password_entry1')
+        self.new_password_window['password_entry2'] = self.gtkbuilder.get_object('password_entry2')
+        self.new_password_window['password_missing'] = self.gtkbuilder.get_object('password_missing')
+        self.new_password_window['password_mismatch'] = self.gtkbuilder.get_object('password_mismatch')
+        self.new_password_window['password_checkbutton'] = self.gtkbuilder.get_object('password_checkbutton')
+        self.new_password_window['ok_button'] = self.gtkbuilder.get_object('ok_button')
         self.new_password_window['main_window'].hide()
         #hook up signals for New Password Window
         self.new_password_window['ok_button'].connect('clicked', self.newPassword_okClicked)
@@ -107,12 +109,12 @@ class GUI(object):
         self.new_password_window['password_checkbutton'].connect('toggled', self.newPassword_passwordCheckBox)
         # Setup Password Check Window 
         self.check_password_window = {}
-        self.check_password_window['main_window'] = self.xml.get_widget('password_check')
-        self.check_password_window['password_entry_question'] = self.xml.get_widget('password_entry_question')
-        self.check_password_window['password_check_ok'] = self.xml.get_widget('password_check_ok')
-        self.check_password_window['password_check_cancel'] = self.xml.get_widget('password_check_cancel')
-        self.check_password_window['pass_err_img'] = self.xml.get_widget('pass_err_img')
-        self.check_password_window['pass_err_labl'] = self.xml.get_widget('pass_err_labl')
+        self.check_password_window['main_window'] = self.gtkbuilder.get_object('password_check')
+        self.check_password_window['password_entry_question'] = self.gtkbuilder.get_object('password_entry_question')
+        self.check_password_window['password_check_ok'] = self.gtkbuilder.get_object('password_check_ok')
+        self.check_password_window['password_check_cancel'] = self.gtkbuilder.get_object('password_check_cancel')
+        self.check_password_window['pass_err_img'] = self.gtkbuilder.get_object('pass_err_img')
+        self.check_password_window['pass_err_labl'] = self.gtkbuilder.get_object('pass_err_labl')
         self.check_password_window['main_window'].hide()
         #hook up signals for check Password Window
         self.check_password_window['password_check_ok'].connect('clicked', self.passwordCheck_okClicked)

@@ -9,7 +9,7 @@ def system_escape(string):
     return message
 
 def pango_escape(message):
-    assert isinstance(message, basestring)
+    assert isinstance(message, str)
     message = "&amp;".join(message.split("&"))
     message = "&lt;".join(message.split("<"))
     message = "&gt;".join(message.split(">"))
@@ -48,8 +48,8 @@ def humanize_time(td):
 
 class DeviceMonitorThread(threading.Thread):
   def run(self):
-    import gtk
-    print 'starting dbus-monitor...'
+    from gi.repository import Gtk
+    print('starting dbus-monitor...')
     self.add_callbacks = []
     self.remove_callbacks = []
     f = os.popen('dbus-monitor --system "interface=org.freedesktop.Hal.Manager"')
@@ -58,18 +58,18 @@ class DeviceMonitorThread(threading.Thread):
       #print line
       if 'member=DeviceRemoved' in line:
         time.sleep(.5)
-        print 'device removed'
+        print('device removed')
         for callback in self.remove_callbacks:
-          gtk.gdk.threads_enter()
+          Gdk.threads_enter()
           callback()
-          gtk.gdk.threads_leave()
+          Gdk.threads_leave()
       if 'member=DeviceAdded' in line:
         time.sleep(.5)
-        print 'device added'
+        print('device added')
         for callback in self.add_callbacks:
-          gtk.gdk.threads_enter()
+          Gdk.threads_enter()
           callback()
-          gtk.gdk.threads_leave()
+          Gdk.threads_leave()
         
         
 device_monitor_thread = DeviceMonitorThread()

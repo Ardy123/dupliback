@@ -1,12 +1,14 @@
-import gtk.glade, os, threading
+import threading
+import os
+from gi.repository import Gtk, GObject, Gdk, GLib
 import util
 
 class GUI(object):
     def takedownProgressBar(self):
-        print 'progress bar take down'
+        print('progress bar take down')
         self.progressUpdater.cancel()
         self.main_window.hide()
-        gtk.gdk.flush()
+        Gdk.flush()
         self.unregister_gui(self)        
         return
                 
@@ -17,10 +19,10 @@ class GUI(object):
         return
     
     def __init__(self, register_gui, unregister_gui, parentWnd, msg):
-        print 'progress bar put up'
+        print('progress bar put up')
         self.register_gui = register_gui
         self.unregister_gui = unregister_gui          
-        self.xml = gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'backup_progress.glade' ) )
+        self.xml = Gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'backup_progress.glade' ) )
         self.main_window = self.xml.get_widget('messagedialog1')
         self.progress_bar= self.xml.get_widget('progress_bar')
         self.message = self.xml.get_widget('progress_messasge')

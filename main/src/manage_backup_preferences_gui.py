@@ -1,4 +1,4 @@
-import gnome, gobject, gtk, gtk.glade, os, sys, tempfile, threading
+import gnome, gobject, gtk, Gtk.glade, os, sys, tempfile, threading
 
 import backup
 import settings
@@ -36,11 +36,11 @@ class GUI(object):
     self.host = host
     self.path = path
   
-    self.xml = gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'manage_backup_preferences.glade' ) )
+    self.xml = Gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'manage_backup_preferences.glade' ) )
     self.main_window = self.xml.get_widget('dialog')
     self.xml.get_widget('button_cancel').connect('clicked', self.close)
     self.xml.get_widget('button_ok').connect('clicked', self.save)
-    icon = self.main_window.render_icon(gtk.STOCK_HARDDISK, gtk.ICON_SIZE_BUTTON)
+    icon = self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON)
     self.main_window.set_icon(icon)
     self.main_window.set_title('%s v%s - Backup Preferences' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION))
     

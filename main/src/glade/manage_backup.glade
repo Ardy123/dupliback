@@ -1,133 +1,133 @@
 <?xml version="1.0"?>
-<glade-interface>
+<interface>
   <!-- interface-requires gtk+ 2.12 -->
   <!-- interface-naming-policy project-wide -->
-  <widget class="GtkWindow" id="window">
+  <object class="GtkWindow" id="window">
     <property name="window_position">center</property>
     <property name="default_width">800</property>
     <property name="default_height">480</property>
     <child>
-      <widget class="GtkVBox" id="vbox1">
+      <object class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
         <child>
-          <widget class="GtkToolbar" id="toolbar1">
+          <object class="GtkToolbar" id="toolbar1">
             <property name="visible">True</property>
             <child>
-              <widget class="GtkToolButton" id="toolbutton_backup">
+              <object class="GtkToolButton" id="toolbutton_backup">
                 <property name="visible">True</property>
-                <property name="tooltip" translatable="yes">bookmark a new moment (backup)</property>
+                <property name="tooltip-text" translatable="yes">bookmark a new moment (backup)</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Backup</property>
                 <property name="use_underline">True</property>
                 <property name="icon">../images/Backup.png</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="homogeneous">True</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkToolButton" id="toolbutton_restore">
+              <object class="GtkToolButton" id="toolbutton_restore">
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
-                <property name="tooltip" translatable="yes">travel to a moment (restore)</property>
+                <property name="tooltip-text" translatable="yes">travel to a moment (restore)</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Status</property>
                 <property name="use_underline">True</property>
                 <property name="icon">../images/Restore.png</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="homogeneous">True</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkToolButton" id="toolbutton_export">
+              <object class="GtkToolButton" id="toolbutton_export">
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
                 <property name="has_tooltip">True</property>
-                <property name="tooltip" translatable="yes">export a moment (exports to a tgz)</property>
+                <property name="tooltip-text" translatable="yes">export a moment (exports to a tgz)</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Export</property>
                 <property name="use_underline">True</property>
                 <property name="icon">../images/package.png</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="homogeneous">True</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkToolButton" id="toolbutton_explore">
+              <object class="GtkToolButton" id="toolbutton_explore">
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
                 <property name="has_tooltip">True</property>
-                <property name="tooltip" translatable="yes">exports the selected mement to a temporary folder and opens it</property>
+                <property name="tooltip-text" translatable="yes">exports the selected mement to a temporary folder and opens it</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Explore</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-directory</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="homogeneous">True</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkToolButton" id="toolbutton_status">
+              <object class="GtkToolButton" id="toolbutton_status">
                 <property name="visible">True</property>
                 <property name="has_tooltip">True</property>
-                <property name="tooltip" translatable="yes">retrieve changes since last bookmarked moment</property>
+                <property name="tooltip-text" translatable="yes">retrieve changes since last bookmarked moment</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Status</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-dialog-info</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="homogeneous">True</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkToolButton" id="toolbutton_preferences">
+              <object class="GtkToolButton" id="toolbutton_preferences">
                 <property name="visible">True</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Preferences</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-preferences</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="homogeneous">True</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkToolButton" id="toolbutton_about">
+              <object class="GtkToolButton" id="toolbutton_about">
                 <property name="visible">True</property>
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">About</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-about</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="homogeneous">True</property>
               </packing>
             </child>
-          </widget>
+          </object>
           <packing>
             <property name="expand">False</property>
             <property name="position">0</property>
           </packing>
         </child>
         <child>
-          <widget class="GtkHBox" id="hbox1">
+          <object class="GtkHBox" id="hbox1">
             <property name="visible">True</property>
             <child>
-              <widget class="GtkLabel" id="label2">
+              <object class="GtkLabel" id="label2">
                 <property name="visible">True</property>
                 <property name="label" translatable="yes">Drive:</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
@@ -136,13 +136,13 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkEntry" id="entry_drive_name">
+              <object class="GtkEntry" id="entry_drive_name">
                 <property name="width_request">280</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="editable">False</property>
                 <property name="invisible_char">&#x25CF;</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
@@ -151,10 +151,10 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkLabel" id="label3">
+              <object class="GtkLabel" id="label3">
                 <property name="visible">True</property>
                 <property name="label" translatable="yes">Path:</property>
-              </widget>
+              </object>
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">False</property>
@@ -163,18 +163,18 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkEntry" id="entry_path">
+              <object class="GtkEntry" id="entry_path">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="editable">False</property>
                 <property name="invisible_char">&#x25CF;</property>
-              </widget>
+              </object>
               <packing>
                 <property name="padding">4</property>
                 <property name="position">3</property>
               </packing>
             </child>
-          </widget>
+          </object>
           <packing>
             <property name="expand">False</property>
             <property name="padding">4</property>
@@ -182,64 +182,64 @@
           </packing>
         </child>
         <child>
-          <widget class="GtkHPaned" id="hpaned1">
+          <object class="GtkHPaned" id="hpaned1">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="position">240</property>
             <property name="position_set">True</property>
             <child>
-              <widget class="GtkScrolledWindow" id="scrolledwindow2">
+              <object class="GtkScrolledWindow" id="scrolledwindow2">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="hscrollbar_policy">automatic</property>
                 <property name="vscrollbar_policy">automatic</property>
                 <child>
-                  <widget class="GtkTreeView" id="treeview_revisions">
+                  <object class="GtkTreeView" id="treeview_revisions">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                  </widget>
+                  </object>
                 </child>
-              </widget>
+              </object>
               <packing>
                 <property name="resize">False</property>
                 <property name="shrink">True</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkScrolledWindow" id="scrolledwindow1">
+              <object class="GtkScrolledWindow" id="scrolledwindow1">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="hscrollbar_policy">automatic</property>
                 <property name="vscrollbar_policy">automatic</property>
                 <child>
-                  <widget class="GtkTreeView" id="treeview_files">
+                  <object class="GtkTreeView" id="treeview_files">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
-                  </widget>
+                  </object>
                 </child>
-              </widget>
+              </object>
               <packing>
                 <property name="resize">True</property>
                 <property name="shrink">True</property>
               </packing>
             </child>
-          </widget>
+          </object>
           <packing>
             <property name="position">2</property>
           </packing>
         </child>
         <child>
-          <widget class="GtkTreeView" id="running_tasks">
+          <object class="GtkTreeView" id="running_tasks">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-          </widget>
+          </object>
           <packing>
             <property name="expand">False</property>
             <property name="padding">1</property>
             <property name="position">3</property>
           </packing>
         </child>
-      </widget>
+      </object>
     </child>
-  </widget>
-</glade-interface>
+  </object>
+</interface>

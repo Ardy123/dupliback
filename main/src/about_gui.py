@@ -1,4 +1,6 @@
-import gtk.glade, os, util
+import os
+from gi.repository import Gtk
+import util
 
 class GUI(object):
     def closedButton(self, dialog, response_id, user=None):
@@ -7,7 +9,7 @@ class GUI(object):
     def __init__(self, register_gui, unregister_gui, parentWnd):
         self.register_gui = register_gui
         self.unregister_gui = unregister_gui          
-        self.xml = gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'about.glade' ) )
+        self.xml = Gtk.glade.XML( os.path.join( util.RUN_FROM_DIR, 'glade', 'about.glade' ) )
         self.main_window = self.xml.get_widget('aboutdialog1')
         self.main_window.connect("response", self.closedButton)
         # force this window ontop
