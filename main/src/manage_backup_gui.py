@@ -176,7 +176,7 @@ class GUI(object):
                         # construct a string path
                         path = ""
                         for ndx in range( 0, len(numericPath) ):
-                            tpl = () + numericPath[:ndx + 1]
+                            tpl = [] + numericPath[:ndx + 1]
                             itr = selection[0].get_iter( tpl )
                             path += ( "/"+ selection[0].get_value(itr,0) )
                         backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password, path )
@@ -191,7 +191,10 @@ class GUI(object):
         return
         
     def start_export(self):
-        dialog = Gtk.FileChooserDialog(title='Select folder to save archive to...', parent=None, action=Gtk.FileChooserAction.SELECT_FOLDER, buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK), backend=None)
+        dialog = Gtk.FileChooserDialog(title='Select folder to save archive to...',
+                                       parent=None,
+                                       action=Gtk.FileChooserAction.SELECT_FOLDER,
+                                       buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
             target_dir = dialog.get_filename()

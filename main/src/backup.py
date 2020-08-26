@@ -188,10 +188,10 @@ def gen_passwordEncrypt(password):
 
 def gen_exclusionCmd( preferences ):
     excludeCmd = ''
-    for prefItem, prefValue in preferences.iteritems():
+    for prefItem, prefValue in preferences.items():
         if prefValue == True:
             excludeSubCmd = ''
-            if ( settings.FILEEXT_EXCLUDE_MAP.has_key(prefItem)):
+            if prefItem in settings.FILEEXT_EXCLUDE_MAP:
                 for fileExt in settings.FILEEXT_EXCLUDE_MAP[prefItem]:
                     excludeSubCmd += '--exclude \'' + fileExt + '\' '
             excludeCmd += excludeSubCmd
@@ -209,7 +209,7 @@ def init_backup(uuid, host, path, password):
     duplicity_dir = get_backupPath(uuid, host, path)
     os.mkdir(duplicity_dir)
     # write config info
-    f = open( os.path.join(duplicity_dir, PROPERTIES_FILE), 'w' )
+    f = open( os.path.join(duplicity_dir, PROPERTIES_FILE), 'wb' )
     o = {
 		'uuid':uuid,
 		'host':host,
@@ -259,7 +259,7 @@ def get_preferences(uuid, host, path):
     if o:
         # version 0.1.0 did not store a version number
         if not o.has_key('app_version'):                                       
-            o['app_version'] = '0.1.0'
+            o['app_version'] = settings.PROGRAM_VERSION
         # version 0.1.0 did not support password encrypted backups
         if not o.has_key('password_protect'):
             o['password_protect'] = False
@@ -274,7 +274,7 @@ def save_preferences(uuid, host, path, preferences):
     pref.update( preferences )
     duplicity_dir = get_backupPath(uuid, host, path)
     try:
-        f = open( os.path.join(duplicity_dir, PREFERENCES_FILE), 'w' )
+        f = open( os.path.join(duplicity_dir, PREFERENCES_FILE), 'wb' )
         pickle.dump(pref, f)
         f.close()
     except:
@@ -360,7 +360,7 @@ def export_revision(uuid, host, path, rev, target_path, password):
     output = f.read()
     if settings.PROGRAM_DEBUG:        
             sys.stdout.write(output)
-    f.close();
+    f.close()
     return fn, tmp_dir
 
 def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
