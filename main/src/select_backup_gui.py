@@ -1,4 +1,4 @@
-from gi.repository import Gtk, GObject, GdkPixbuf, GLib
+from gi.repository import Gtk, GObject, GdkPixbuf, GLib, Gdk
 import os
 import threading
 
@@ -9,15 +9,13 @@ import password_managment
 import backup_progress_gui
 import settings
 import util
+import logging
 
-  
-def echo(*args):
-    print('echo', args)
 
 class GUI(object):
 
     def close(self, a=None, b=None):
-        self.main_window.hide()
+        self.main_window.close()
         self.unregister_gui(self)
         return
     
@@ -29,6 +27,7 @@ class GUI(object):
             host = model.get_value(entry, 4)
             path = model.get_value(entry, 5)
             self.register_gui( manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password ) )
+        self.main_window.destroy()
         return
     def passwordCancel(self):
         return 
@@ -45,7 +44,7 @@ class GUI(object):
             path = model.get_value(entry, 5)
             pswd = model.get_value(entry, 6)
             if uuid and host and path:
-                print('opening... drive:%s'%uuid, 'path:%s'%path)
+                logging.info('opening... drive:%s'%uuid, 'path:%s'%path)
                 # check if a password is needed
                 prefs = backup.get_preferences(uuid, host, path)
                 if prefs['password_protect'] == True:
@@ -55,9 +54,9 @@ class GUI(object):
                 else:
                     self.launchManageBackupGui()       
             else:
-                print('creating a new archive...')
+                logging.info('creating a new archive...')
                 self.register_gui( create_backup_gui.GUI(self.register_gui, self.unregister_gui) )
-                self.close()
+            self.close()
         return 
 
     def delete_backup(self,a=None,b=None,c=None):
@@ -75,7 +74,7 @@ class GUI(object):
                 md = Gtk.MessageDialog(None, Gtk.DialogFlags.DESTROY_WITH_PARENT, Gtk.MessageType.WARNING, Gtk.ButtonsType.YES_NO, util.pango_escape(title))
                 md.format_secondary_markup(s)
                 if Gtk.ResponseType.YES==md.run():
-                    print('deleting',uuid,host,path)
+                    logging.info('deleting',uuid,host,path)
                     gui = self
                     class T(threading.Thread):
                         def run(self):

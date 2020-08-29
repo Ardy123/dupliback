@@ -1,4 +1,10 @@
-import os, pickle, sys, tempfile, traceback, hashlib
+import os
+import pickle
+import sys
+import tempfile
+import traceback
+import hashlib
+import logging
 import uuid as uuidlib
 import settings
 import util
@@ -6,6 +12,7 @@ import util
 UUID_GVFS = uuidlib.uuid5(uuidlib.NAMESPACE_DNS, 'gvfs.dupliback.org')
 PROPERTIES_FILE = 'dupliback_properties.pickle'
 PREFERENCES_FILE = 'dupliback_preferences.pickle'
+
 
 def get_known_backups():
     backups = []
@@ -21,10 +28,10 @@ def get_known_backups():
                     if 'password' not in o:
                         o['password'] = ''
                     backups.append(o)
-                    print('discovered backup:', uuid, path)
+                    logging.info('discovered backup:', uuid, path)
                 except Exception as e:
-                    print(e)
-                    print('failed to read:', os.path.join(path, fbdb, PROPERTIES_FILE))
+                    logging.debug(e)
+                    logging.warning('failed to read:', os.path.join(path, fbdb, PROPERTIES_FILE))
     return backups
 
   
@@ -82,22 +89,22 @@ def get_writable_devices():
                 os.remove(fn)
                 writable_uuids.append(uuid)
             except:
-                print('could not write to:', path)
+                logging.info('could not write to: ' + str(path))
     return writable_uuids
   
 def test_backup_assertions(uuid, host, path, test_exists=True):
     if not is_dev_present(uuid): 
-        print('not is_dev_present("%s")' % uuid)
+        logging.error('not is_dev_present("%s")' % uuid)
         return False
     if not get_hostname() == host:
-        print('get_hostname()!="%s"' % host)
+        logging.error('get_hostname()!="%s"' % host)
         return False
     if not os.path.exists(path):
-        print('not os.path.exists("%s")' % path)
+        logging.error('not os.path.exists("%s")' % path)
         return False
     if test_exists:
         if not os.path.exists(get_backupPath(uuid, host, path)):
-            print('not os.path.exists("%s")' % get_backupPath(uuid, host, path))
+            logging.error('not os.path.exists("%s")' % get_backupPath(uuid, host, path))
             return False
     return True
 
@@ -147,19 +154,19 @@ def get_drive_name(uuid):
 def get_free_space(uuid):
     path = get_mount_point_for_uuid(uuid)
     cmd = 'df "%s"' % path
-    print('$', cmd)
+    logging.debug('$', cmd)
     f = os.popen(cmd)
     s = f.read()
     f.close()
     line = s.split('\n')[1]
     x = line.strip().split()
-    print(x)
+    logging.debug(x)
     if int(x[1])==0: return -1 # unknown amount of space
     return int(x[-3])*1024
       
 def get_git_db_name(uuid, host, path):
     s = ':'.join( (uuid, host, path) )
-    print(s)
+    logging.debug(s)
     return '.duplibackdb_%s' % hashlib.sha1(s.encode('utf-8')).hexdigest()
   
 def get_backupPath(uuid, host, path):
@@ -201,7 +208,7 @@ def rmdir(tmp):
     f = os.popen('rm -Rf "%s"' % tmp)
     s = f.read().strip()
     f.close()
-    if s:  print(s)
+    if s: logging.debug(s)
 
 
 def init_backup(uuid, host, path, password):
@@ -250,18 +257,19 @@ def get_preferences(uuid, host, path):
     preferences = dict(settings.DEFAULT_PREFERENCES)
     duplicity_dir = get_backupPath(uuid, host, path)
     try:
-        f = open( os.path.join(duplicity_dir, PREFERENCES_FILE), 'r' )
-        o = pickle.load(f)
+        f = open( os.path.join(duplicity_dir, PREFERENCES_FILE), 'rb' )
+        o = pickle.load(f, encoding='utf-8')
         f.close()
-    except:
+    except Exception as e:
+        logging.error(e)
         return preferences
-    #deal with a change in version numbers
+    # deal with a change in version numbers
     if o:
         # version 0.1.0 did not store a version number
-        if not o.has_key('app_version'):                                       
+        if 'app_version' not in o:
             o['app_version'] = settings.PROGRAM_VERSION
         # version 0.1.0 did not support password encrypted backups
-        if not o.has_key('password_protect'):
+        if 'password_protect' not in o:
             o['password_protect'] = False
         preferences.update(o)    
     #nothing to do right now
@@ -278,7 +286,7 @@ def save_preferences(uuid, host, path, preferences):
         pickle.dump(pref, f)
         f.close()
     except:
-        print(traceback.print_exc())
+        logging.error(traceback.print_exc())
     return
   
 
@@ -322,7 +330,7 @@ def get_revisions(uuid, host, path):
                             entry['nVolumes'] = column                            
                 if entry:
                     log.append(entry)                    
-    print('log', log)
+    logging.debug('log', log)
     return log
 
 
@@ -387,7 +395,7 @@ def get_status(uuid, host, path, password):
     duplicity_uri = get_backupUri(uuid, host, path)
     password_cmd = gen_passwordCmd(password)
     duplicity_cmd = 'PASSPHRASE=%s duplicity %s --dry-run %s %s' % (password, password_cmd, path, duplicity_uri)
-    print('$', duplicity_cmd)
+    logging.debug('$', duplicity_cmd)
     f = os.popen(duplicity_cmd)    
     for line in f:
         if settings.PROGRAM_DEBUG: 
@@ -411,7 +419,7 @@ def get_status(uuid, host, path, password):
 def delete_backup(uuid, host, path):
     backup_dir = get_backupPath(uuid, host, path)
     cmd = 'rm -Rf "%s"' % backup_dir
-    print('$', cmd)
+    logging.debug('$', cmd)
     f = os.popen(cmd)
     output = f.read()
     if settings.PROGRAM_DEBUG:        

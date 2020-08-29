@@ -45,11 +45,11 @@ def launch_select_backup_gui():
 if __name__=='__main__':
   import sys
   args = sys.argv[1:]
-  
+
   if len(args):
     print
     print("------------------------------------------")
-    print(" dupliBack - Apple's Time Machine for Linux")
+    print(" dupliBack - Backup for Linux")
     print("------------------------------------------")
     print
     if args[0] in ('-b','--backup-all'):

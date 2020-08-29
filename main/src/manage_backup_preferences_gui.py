@@ -1,12 +1,9 @@
-import sys
 import os
-import tempfile
-import threading
 import backup
 import settings
 import util
 from gi.repository import Gtk, GObject, Gdk, GLib, GdkPixbuf
-
+import logging
 
 class GUI(object):
 
@@ -48,7 +45,7 @@ class GUI(object):
     self.main_window.set_title('%s v%s - Backup Preferences' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION))
     
     self.preferences = backup.get_preferences(self.uuid, self.host, self.path)
-    print(self.preferences)
+    logging.debug(self.preferences)
 
     self.gtkbuilder.get_object('checkbutton_exclude_audio').set_active(self.preferences.get('exclude_audio'))
     self.gtkbuilder.get_object('checkbutton_exclude_video').set_active(self.preferences.get('exclude_video'))

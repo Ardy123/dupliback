@@ -2,10 +2,11 @@ import threading
 import os
 from gi.repository import Gtk, GObject, Gdk, GLib
 import util
+import logging
 
 class GUI(object):
     def takedownProgressBar(self):
-        print('progress bar take down')
+        logging.debug('progress bar take down')
         self.progressUpdater.cancel()
         self.main_window.hide()
         Gdk.flush()
@@ -19,7 +20,7 @@ class GUI(object):
         return
     
     def __init__(self, register_gui, unregister_gui, parentWnd, msg):
-        print('progress bar put up')
+        logging.debug('progress bar put up')
         self.register_gui = register_gui
         self.unregister_gui = unregister_gui
         self.gtkbuilder = Gtk.Builder()

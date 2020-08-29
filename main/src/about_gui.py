@@ -17,4 +17,4 @@ class GUI(object):
         self.main_window.set_transient_for( parentWnd )
         # running_tasks_thread.daemon = True
         self.main_window.show()               
-        return     
+        return

@@ -6,6 +6,8 @@ import backup
 class GUI(object):
     def newPassword_passwordCheckBox(self,button, a=None, b=None ):
         if button.get_active():
+            self.new_password_window['password_entry_label1'].set_sensitive(False)
+            self.new_password_window['password_entry_label2'].set_sensitive(False)
             self.new_password_window['password_entry1'].set_sensitive(False)
             self.new_password_window['password_entry1'].set_text('')
             self.new_password_window['password_entry2'].set_sensitive(False)
@@ -14,7 +16,9 @@ class GUI(object):
             self.new_password_window['password_mismatch'].hide()
             self.new_password_window['ok_button'].set_sensitive(True)
         else:
-            self.new_password_window['password_entry1'].set_sensitive(True)            
+            self.new_password_window['password_entry_label1'].set_sensitive(True)
+            self.new_password_window['password_entry_label2'].set_sensitive(True)
+            self.new_password_window['password_entry1'].set_sensitive(True)
             self.new_password_window['password_entry2'].set_sensitive(True)            
             self.new_password_window['password_missing'].show()
             self.new_password_window['ok_button'].set_sensitive(False)                                
@@ -95,6 +99,8 @@ class GUI(object):
         # Setup New Password Window
         self.new_password_window = {}
         self.new_password_window['main_window'] = self.gtkbuilder.get_object('new_password')
+        self.new_password_window['password_entry_label1'] = self.gtkbuilder.get_object('password_entry_label1')
+        self.new_password_window['password_entry_label2'] = self.gtkbuilder.get_object('password_entry_label2')
         self.new_password_window['password_entry1'] = self.gtkbuilder.get_object('password_entry1')
         self.new_password_window['password_entry2'] = self.gtkbuilder.get_object('password_entry2')
         self.new_password_window['password_missing'] = self.gtkbuilder.get_object('password_missing')

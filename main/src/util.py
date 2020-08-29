@@ -1,5 +1,11 @@
 from __future__ import division
-import datetime, os, sys, threading, time
+import datetime
+import os
+import sys
+import threading
+import time
+import logging
+from gi.repository import Gtk
 
 
 RUN_FROM_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -48,24 +54,22 @@ def humanize_time(td):
 
 class DeviceMonitorThread(threading.Thread):
   def run(self):
-    from gi.repository import Gtk
-    print('starting dbus-monitor...')
+    logging.info('starting dbus-monitor...')
     self.add_callbacks = []
     self.remove_callbacks = []
     f = os.popen('dbus-monitor --system "interface=org.freedesktop.Hal.Manager"')
     while True:
       line = f.readline()
-      #print line
       if 'member=DeviceRemoved' in line:
         time.sleep(.5)
-        print('device removed')
+        logging.info('device removed')
         for callback in self.remove_callbacks:
           Gdk.threads_enter()
           callback()
           Gdk.threads_leave()
       if 'member=DeviceAdded' in line:
         time.sleep(.5)
-        print('device added')
+        logging.info('device added')
         for callback in self.add_callbacks:
           Gdk.threads_enter()
           callback()

@@ -6,11 +6,8 @@ import manage_backup_gui
 import settings
 import util
 import password_managment
+import logging
 
-print(util.RUN_FROM_DIR)
-
-def echo(*args):
-	print('echo', args)
 
 class GUI(object):
 
@@ -38,7 +35,7 @@ class GUI(object):
 				path = chooserWidget.get_filename()
 			else:
 				path = path[7:]
-			print('opening... drive:%s'%uuid, 'host:%s'%host, 'path:%s'%path)
+			logging.debug('opening... drive:%s'%uuid, 'host:%s'%host, 'path:%s'%path)
 			backup.init_backup(uuid, host, path, password)
 			self.register_gui( manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password) )
 			self.close()
@@ -73,7 +70,7 @@ class GUI(object):
 			self.gtkbuilder.get_object('button_new').set_sensitive(True)
 
 	def __init__(self, register_gui, unregister_gui):
-		print(util.RUN_FROM_DIR)
+		logging.debug(util.RUN_FROM_DIR)
 		self.register_gui = register_gui
 		self.unregister_gui = unregister_gui
 		self.gtkbuilder = Gtk.Builder()

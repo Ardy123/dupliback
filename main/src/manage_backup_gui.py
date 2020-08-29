@@ -4,12 +4,13 @@ import time
 import tempfile
 import os
 from gi.repository import Gtk, GObject, Gdk, GLib, GdkPixbuf
+import backup
+import settings
+import util
+import backup_progress_gui
+import backup_status_gui
+import about_gui
 
-import backup, settings, util, backup_progress_gui, backup_status_gui, about_gui
-
-
-def echo(*args):
-    print('echo', args)
 
 class GUI(object):
 

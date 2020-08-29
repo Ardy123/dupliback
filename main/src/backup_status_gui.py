@@ -1,6 +1,7 @@
 import os
 import settings
 import util
+import logging
 from gi.repository import Gtk, GdkPixbuf
 
 class GUI(object):
@@ -10,7 +11,7 @@ class GUI(object):
         self.unregister_gui(self)
 
     def set_files(self, added, modified, deleted):
-        print(added, modified, deleted)
+        logging.debug(added, modified, deleted)
         model = self.gtkbuilder.get_object('treeview_filelist').get_model()
         model.clear()
         for fn in added:
