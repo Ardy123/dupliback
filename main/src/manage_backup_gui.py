@@ -3,6 +3,7 @@ import threading
 import time
 import tempfile
 import os
+import logging
 from gi.repository import Gtk, GObject, Gdk, GLib, GdkPixbuf
 import backup
 import settings
@@ -64,44 +65,41 @@ class GUI(object):
                 else:
                     return (filepath[:ndx],filepath[ndx + 1:])                            
             def findPath(self, pathStr):
-                #find the delta in the curr path and the desired path
+                # find the delta in the curr path and the desired path
                 dirSplit = pathStr.split('/')
                 if dirSplit[0] != '': dirSplit.insert( 0, '' )
-                #unwind cached path until it matches desired path
+                # unwind cached path until it matches desired path
                 del self.currPath[len(dirSplit):]
                 for ndx, dir in enumerate(dirSplit):
                     try:
-                        if self.currPath[ndx][0] != dir:
+                        if len(self.currPath) > ndx and self.currPath[ndx][0] != dir:
                             del self.currPath[ndx:]                                                          
                             break
-                    except IndexError:
-                        print("what?!")
+                    except IndexError as e:
+                        logging.debug(e)
                         break                 
-                #find adjusted path - because path will always be the last added path just find the last path and add it              
+                #find adjusted path - because path will always be the last added path just find the last path and add it
                 itr = self.currPath[-1][1]
                 if self.currPath[-1][0] != dir:                    
                     itr = replacmentModel.iter_nth_child( itr, replacmentModel.iter_n_children( itr ) - 1)
                     self.currPath.append([dir,itr]) 
                 return itr
                 
-            def callback(self, pathDateLst ):
-                def ui_update():
-                    # split out path from file
-                    path, file = self.splitPathFilename(pathDateLst[0])
-                    # get model iterator
-                    itr =  self.findPath(path)
-                    #add item
-                    replacmentModel.append(itr, [(file), (pathDateLst[1])])
-                    running_tasks_model.remove(i)
-                    treeview_files_view.set_model(replacmentModel)
-                    treeview_files_model = replacmentModel
-                    messageBox.takedownProgressBar()
-                GLib.idle_add(ui_update)
+            def callback(self, pathDateLst):
+                # split out path from file
+                path, file = self.splitPathFilename(pathDateLst[0])
+                # add item to tree
+                insert_itr = replacmentModel.append(parent=self.findPath(path))
+                replacmentModel[insert_itr] = [file, pathDateLst[1]]
 
-                return
             def run(self):
                 self.currPath=[['',None]]
                 backup.get_files_for_revision(gui.uuid, gui.host, gui.path, rev, gui.password, self.callback)
+                def ui_update():
+                    running_tasks_model.remove(i)
+                    treeview_files_view.set_model(replacmentModel)
+                    messageBox.takedownProgressBar()
+                GLib.idle_add(ui_update)
 
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving File List, Please Wait' )
         messageBox.main_window.set_transient_for( self.main_window )
@@ -351,7 +349,7 @@ class GUI(object):
                         x[3] = util.humanize_time( datetime.datetime.now() - x[2] )
                 GLib.idle_add(ui_update)
                 if tasks_running: time.sleep(1)
-                else: time.sleep(10)
+                else: time.sleep(3)
         thread = threading.Thread(target=thread_func)
         thread.daemon = True
         thread.start()
