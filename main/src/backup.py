@@ -8,6 +8,8 @@ import logging
 import uuid as uuidlib
 import settings
 import util
+import error_dialog
+from gi.repository import Gtk, GObject, GdkPixbuf, GLib, Gdk
 
 UUID_GVFS = uuidlib.uuid5(uuidlib.NAMESPACE_DNS, 'gvfs.dupliback.org')
 PROPERTIES_FILE = 'dupliback_properties.pickle'
@@ -95,16 +97,20 @@ def get_writable_devices():
 def test_backup_assertions(uuid, host, path, test_exists=True):
     if not is_dev_present(uuid): 
         logging.error('not is_dev_present("%s")' % uuid)
+        launch_error('not is_dev_present("%s")' % uuid)
         return False
     if not get_hostname() == host:
         logging.error('get_hostname()!="%s"' % host)
+        launch_error('get_hostname()!="%s"' % host)
         return False
     if not os.path.exists(path):
         logging.error('not os.path.exists("%s")' % path)
+        launch_error('not os.path.exists("%s")' % path)
         return False
     if test_exists:
         if not os.path.exists(get_backupPath(uuid, host, path)):
             logging.error('not os.path.exists("%s")' % get_backupPath(uuid, host, path))
+            launch_error('not os.path.exists("%s")' % get_backupPath(uuid, host, path))
             return False
     return True
 
@@ -214,7 +220,12 @@ def rmdir(tmp):
 def init_backup(uuid, host, path, password):
     assert test_backup_assertions(uuid, host, path, test_exists=False)
     duplicity_dir = get_backupPath(uuid, host, path)
-    os.mkdir(duplicity_dir)
+    if not os.path.isdir(duplicity_dir):
+        os.mkdir(duplicity_dir)
+    else:
+        launch_error("Backup Already Exists!")
+        exit(-1)
+        return
     # write config info
     f = open( os.path.join(duplicity_dir, PROPERTIES_FILE), 'wb' )
     o = {
@@ -375,7 +386,7 @@ def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
     duplicity_uri = get_backupUri(uuid, host, path)
     password_cmd = gen_passwordCmd(password)
     if restorePath == None:
-        dst_dir = path;
+        dst_dir = path
         duplicity_cmd = 'PASSPHRASE=%s duplicity restore --force --time %s %s %s %s' % ( password, rev, password_cmd, duplicity_uri,dst_dir)
     else:
         dst_dir = path + util.system_escape(restorePath)
@@ -426,4 +437,8 @@ def delete_backup(uuid, host, path):
             sys.stdout.write(output)
     f.close()
   
-
+def launch_error(error_msg):
+    err_dialog= error_dialog.ErrorDialog(error_msg, None)
+    if err_dialog.run() == Gtk.ResponseType.OK:
+        logging.debug("error dialog ok was pressed")
+        err_dialog.destroy()

@@ -55,7 +55,7 @@ class GUI(object):
         replacmentModel = Gtk.TreeStore( str, str )
         gui = self
             
-        class T(threading.Thread):
+        class T:
             def splitPathFilename(self, filepath):
                 # split out path from file 
                 ndx = filepath.rfind('/')
@@ -75,6 +75,7 @@ class GUI(object):
                             del self.currPath[ndx:]                                                          
                             break
                     except IndexError:
+                        print("what?!")
                         break                 
                 #find adjusted path - because path will always be the last added path just find the last path and add it              
                 itr = self.currPath[-1][1]
@@ -84,28 +85,29 @@ class GUI(object):
                 return itr
                 
             def callback(self, pathDateLst ):
-                Gdk.threads_enter()                
-                # split out path from file
-                path, file = self.splitPathFilename(pathDateLst[0])
-                # get model iterator 
-                itr =  self.findPath(path)
-                #add item                        
-                replacmentModel.append( itr, [(file),(pathDateLst[1])] )
-                Gdk.threads_leave()
-                return                            
+                def ui_update():
+                    # split out path from file
+                    path, file = self.splitPathFilename(pathDateLst[0])
+                    # get model iterator
+                    itr =  self.findPath(path)
+                    #add item
+                    replacmentModel.append(itr, [(file), (pathDateLst[1])])
+                    running_tasks_model.remove(i)
+                    treeview_files_view.set_model(replacmentModel)
+                    treeview_files_model = replacmentModel
+                    messageBox.takedownProgressBar()
+                GLib.idle_add(ui_update)
+
+                return
             def run(self):
                 self.currPath=[['',None]]
                 backup.get_files_for_revision(gui.uuid, gui.host, gui.path, rev, gui.password, self.callback)
-                Gdk.threads_enter()                
-                running_tasks_model.remove(i)
-                messageBox.takedownProgressBar()                
-                treeview_files_view.set_model(replacmentModel)
-                treeview_files_model = replacmentModel
-                Gdk.threads_leave()
-                                
+
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving File List, Please Wait' )
         messageBox.main_window.set_transient_for( self.main_window )
-        T().start()        
+        def thread_func(): (T()).run()
+        thread = threading.Thread(target = thread_func)
+        thread.start()
 
     def restore_selection(self, widget, selection=None ):  
         self.start_restore(selection)
@@ -156,39 +158,38 @@ class GUI(object):
         running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
         i = running_tasks_model.append( ( icon, util.pango_escape('backing up: '+self.path), datetime.datetime.now(), '' ) )
         gui = self
-        class T(threading.Thread):
-            def run(self):
-                backup.backup(gui.uuid, gui.host, gui.path, gui.password)
-                Gdk.threads_enter()                                
+        def thread_func():
+            backup.backup(gui.uuid, gui.host, gui.path, gui.password)
+            def ui_update():
                 gui.update_revisions()
                 running_tasks_model.remove(i)
                 messageBox.takedownProgressBar()
-                Gdk.threads_leave()
+            GLib.idle_add(ui_update)
+
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Backing Up, Please Wait' )
-        T().start()                      
+        thread = threading.Thread(target=thread_func)
+        thread.start()
 
     def start_restore(self, selection=None ):  
         gui = self
         rev = self.get_selected_revision()
-        class T(threading.Thread):
-            def run(self):     
-                if selection != None:    
-                    for numericPath in selection[1]:
-                        # construct a string path
-                        path = ""
-                        for ndx in range( 0, len(numericPath) ):
-                            tpl = [] + numericPath[:ndx + 1]
-                            itr = selection[0].get_iter( tpl )
-                            path += ( "/"+ selection[0].get_value(itr,0) )
-                        backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password, path )
-                else:
-                    backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password)                
-                    Gdk.threads_enter()
-                    messageBox.takedownProgressBar()
-                    Gdk.threads_leave()
-                messageBox.takedownProgressBar()
+        def thread_func():
+            if selection != None:
+                for numericPath in selection[1]:
+                    # construct a string path
+                    path = ""
+                    for ndx in range( 0, len(numericPath) ):
+                        tpl = [] + numericPath[:ndx + 1]
+                        itr = selection[0].get_iter( tpl )
+                        path += ( "/"+ selection[0].get_value(itr,0) )
+                    backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password, path )
+            else:
+                backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password)
+            GLib.idle_add(messageBox.takedownProgressBar)
+
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Restoring, Please Wait' )
-        T().start()                            
+        thread = threading.Thread(target=thread_func)
+        thread.start()
         return
         
     def start_export(self):
@@ -204,17 +205,18 @@ class GUI(object):
             running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
             i = running_tasks_model.append( ( icon, util.pango_escape('exporting selected revision to: '+target_dir), datetime.datetime.now(), '' ) )
             gui = self
-            class T(threading.Thread):
-                def run(self):
-                    fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )                         
-                    backup.rmdir(tmp_path)               
-                    util.open_file(fn)
-                    Gdk.threads_enter()
+            def thread_func():
+                fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )
+                backup.rmdir(tmp_path)
+                util.open_file(fn)
+                def ui_task():
                     running_tasks_model.remove(i)
                     messageBox.takedownProgressBar()
-                    Gdk.threads_leave()
+                GLib.idle_add(ui_task)
+
             messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Exporting Backup, Please Wait' )
-            T().start()            
+            thread = threading.Thread(target=thread_func)
+            thread.start()
         
         elif response == Gtk.ResponseType.CANCEL: pass
         dialog.destroy()
@@ -226,36 +228,36 @@ class GUI(object):
         running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
         i = running_tasks_model.append( ( icon, util.pango_escape('preparing folder for exploration: '+target_dir), datetime.datetime.now(), '' ) )
         gui = self
-
-        class T(threading.Thread):
-            def run(self):
-                fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )
-                os.remove( fn )
-                util.open_file(tmp_path)               
-                Gdk.threads_enter()
+        def thread_func():
+            fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )
+            os.remove( fn )
+            util.open_file(tmp_path)
+            def ui_update():
                 running_tasks_model.remove(i)
                 messageBox.takedownProgressBar()
-                Gdk.threads_leave()
-        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Exploring Backup, Please Wait' )                
-        T().start()                           
+            GLib.idle_add(ui_update)
+
+        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Exploring Backup, Please Wait' )
+        thread = threading.Thread(target=thread_func)
+        thread.start()
     
     def start_status(self):
         icon = self.main_window.render_icon(Gtk.STOCK_FIND, Gtk.IconSize.MENU)
         running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
         i = running_tasks_model.append( ( icon, util.pango_escape('retrieving folder status since last backup...'), datetime.datetime.now(), '' ) )       
-        gui = self  
-        class T(threading.Thread):
-            def run(self):
-                added, modified, deleted = backup.get_status( gui.uuid, gui.host, gui.path, gui.password )
-                Gdk.threads_enter()                                                
+        gui = self
+        def thread_func():
+            added, modified, deleted = backup.get_status( gui.uuid, gui.host, gui.path, gui.password )
+            def ui_update():
                 running_tasks_model.remove(i)
-                messageBox.takedownProgressBar() 
-                gui2 = backup_status_gui.GUI(gui.register_gui, gui.unregister_gui, gui.uuid, gui.host, gui.path, gui.main_window )               
+                messageBox.takedownProgressBar()
+                gui2 = backup_status_gui.GUI(gui.register_gui, gui.unregister_gui, gui.uuid, gui.host, gui.path, gui.main_window )
                 gui.register_gui( gui2 )
                 gui2.set_files(added, modified, deleted)
-                Gdk.threads_leave()                
+            GLib.idle_add(ui_update)
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving Status, Please Wait' )
-        T().start()        
+        thread = threading.Thread(target=thread_func)
+        thread.start()
 
     def open_about(self):
         about_dialoge = about_gui.GUI(self.register_gui, self.unregister_gui, self.main_window)
@@ -340,19 +342,19 @@ class GUI(object):
         running_tasks_widget.set_model(running_tasks_model)
         running_tasks_widget.set_headers_visible(False)
         running_tasks_widget.set_property('rules-hint', True)
-        class T(threading.Thread):
-            def run(self):
-                while True:
-                    tasks_running = False
-                    Gdk.threads_enter()
+        def thread_func():
+            while True:
+                tasks_running = False
+                def ui_update():
                     for x in running_tasks_model:
+                        print(x)
                         x[3] = util.humanize_time( datetime.datetime.now() - x[2] )
-                    Gdk.threads_leave()
-                    if tasks_running: time.sleep(1)
-                    else: time.sleep(10)
-        running_tasks_thread = T() 
-        running_tasks_thread.daemon = True
-        running_tasks_thread.start()
+                GLib.idle_add(ui_update)
+                if tasks_running: time.sleep(1)
+                else: time.sleep(10)
+        thread = threading.Thread(target=thread_func)
+        thread.daemon = True
+        thread.start()
         self.main_window.show()
     
         # if no revisions exist, prompt user to run backup

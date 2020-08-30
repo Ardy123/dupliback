@@ -5,7 +5,9 @@ import sys
 import threading
 import time
 import logging
-from gi.repository import Gtk
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, GLib
 
 
 RUN_FROM_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -64,17 +66,12 @@ class DeviceMonitorThread(threading.Thread):
         time.sleep(.5)
         logging.info('device removed')
         for callback in self.remove_callbacks:
-          Gdk.threads_enter()
-          callback()
-          Gdk.threads_leave()
+            GLib.idle_add(callback)
       if 'member=DeviceAdded' in line:
         time.sleep(.5)
         logging.info('device added')
         for callback in self.add_callbacks:
-          Gdk.threads_enter()
-          callback()
-          Gdk.threads_leave()
-        
+            GLib.idle_add(callback)
         
 device_monitor_thread = DeviceMonitorThread()
 device_monitor_thread.daemon = True

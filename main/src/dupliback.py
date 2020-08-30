@@ -1,9 +1,10 @@
 #!/usr/bin/python3
-import os, sys, traceback
-
+import os
+import sys
+import traceback
 import settings
 import backup
-
+from gi.repository import Gtk, GObject
 
 GUIS = set()
 
@@ -65,9 +66,6 @@ if __name__=='__main__':
       print(' $ python dupliback.py <drive_uuid> <path>')
       print()
   else:
-    from gi.repository import Gtk, GObject, Gdk
-    GObject.threads_init()
-    Gdk.threads_init()
     launch_select_backup_gui()
     Gtk.main()
 

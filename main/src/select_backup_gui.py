@@ -11,6 +11,8 @@ import settings
 import util
 import logging
 
+import error_dialog
+
 
 class GUI(object):
 
@@ -76,15 +78,14 @@ class GUI(object):
                 if Gtk.ResponseType.YES==md.run():
                     logging.info('deleting',uuid,host,path)
                     gui = self
-                    class T(threading.Thread):
-                        def run(self):
-                            backup.delete_backup(uuid, host, path)
-                            Gdk.threads_enter()                            
-                            gui.refresh_device_list()
-                            messageBox.takedownProgressBar()
-                            Gdk.threads_leave()
+                    def thread_proc():
+                        backup.delete_backup(uuid, host, path)
+                        GLib.idle_add(gui.refresh_device_list)
+                        GLib.idle_add(messageBox.takedownProgressBar)
+
+                    thread = threading.Thread(target=thread_proc)
                     messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving Status, Please Wait' )
-                    T().start()
+                    thread.start()
                 md.destroy()
         return
 
