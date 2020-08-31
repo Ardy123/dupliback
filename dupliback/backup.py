@@ -19,24 +19,26 @@ PREFERENCES_FILE = 'dupliback_preferences.pickle'
 def get_known_backups():
     backups = []
     for uuid in get_all_devices():
-        path = get_mount_point_for_uuid(uuid)
-        if path:
-            fbdbs = [ x for x in os.listdir(path) if x.startswith('.duplibackdb') ]
-            for fbdb in fbdbs:
-                try:
-                    f = open( os.path.join(path, fbdb, PROPERTIES_FILE), 'rb' )
-                    o = pickle.load(f, encoding='utf-8')
-                    f.close()
-                    if 'password' not in o:
-                        o['password'] = ''
-                    backups.append(o)
-                    logging.info('discovered backup:', uuid, path)
-                except Exception as e:
-                    logging.debug(e)
-                    logging.warning('failed to read:', os.path.join(path, fbdb, PROPERTIES_FILE))
+        try:
+            path = get_mount_point_for_uuid(uuid)
+            if path:
+                fbdbs = [ x for x in os.listdir(path) if x.startswith('.duplibackdb') ]
+                for fbdb in fbdbs:
+                    try:
+                        f = open( os.path.join(path, fbdb, PROPERTIES_FILE), 'rb' )
+                        o = pickle.load(f, encoding='utf-8')
+                        f.close()
+                        if 'password' not in o:
+                            o['password'] = ''
+                        backups.append(o)
+                        logging.info('discovered backup:', uuid, path)
+                    except Exception as e:
+                        logging.debug(e)
+                        logging.warning('failed to read:', os.path.join(path, fbdb, PROPERTIES_FILE))
+        except Exception as outer_e:
+            logging.debug(outer_e)
     return backups
 
-  
 def is_dev_present(uuid):  
     for x in get_gvfs_devices_and_paths():
         if uuid==x:

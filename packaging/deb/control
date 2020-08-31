@@ -5,8 +5,8 @@ Maintainer: Ardy Falls <ArdyFalls@gmail.com>
 Homepage: http://code.google.com/p/dupliback/
 Package: dupli.back
 Architecture: all
-Version:0.2.4
-Depends: python, python-glade2, python-gnome2, duplicity, python-paramiko
+Version:0.3.0
+Depends: python, python3-gi, duplicity, python-gobject
 Description: dupli.back Backup software
  dupli.back Backup software for Linux Originally based on 'flyback', which was based on Apple's 'Time Machine'. 
  Dupli.back, is a full featured backup application built on top of the duplicity command line backup tool. It supports 
