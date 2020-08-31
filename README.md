@@ -1,4 +1,4 @@
-# dubli.back
+# dupli.back
 
 Originally based on 'flyback', dupli.back, is a full featured backup application
 built on top of the duplicity command line backup tool. The projects goals are
