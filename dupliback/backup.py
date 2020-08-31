@@ -5,6 +5,7 @@ import tempfile
 import traceback
 import hashlib
 import logging
+import re
 import uuid as uuidlib
 import settings
 import util
@@ -306,65 +307,47 @@ def save_preferences(uuid, host, path, preferences):
 
 def get_revisions(uuid, host, path):
     duplicity_uri = get_backupUri(uuid, host, path)
-    duplicity_cmd = 'duplicity collection-status %s' % (duplicity_uri)  
+    duplicity_cmd = 'duplicity collection-status %s' % (duplicity_uri)
+    duplicity_rgx = re.compile("\s*(Full|Incremental)\s*(\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(\S*)")
+    month_tbl_map = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6, "Jul": 7, "Aug": 8,
+                     "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}
+    revision_history = []
     f = os.popen(duplicity_cmd)
-    s = []
     for line in f:
-        s.append(line)
-    f.close()
-    s = ''.join(s)
-    log = []
-    if s:
-        MonthTbl = {"Jan":1,"Feb":2,"Mar":3,"Apr":4,"May":5,"Jun":6,"Jul":7,"Aug":8,"Sep":9,"Oct":10,"Nov":11,"Dec":12 }
-        entry = None
-        for line in s.split('\n'):
-            line = line.strip().expandtabs(1)
-            # check if a backup has ever occured
-            if line == 'Last full backup date: none': 
-                break
-            # check if there are backups lets fill the dictionary
-            if line.startswith('Full') or line.startswith('Incremental'):
+        regex_groups = duplicity_rgx.match(line)
+        logging.debug(line)
+        if regex_groups:
+            try:
                 entry = {}
-                for column in line.split(' '):
-                    if column != '':
-                        if column.lower() == 'full' or column.lower() == 'incremental':
-                            entry['type'] = column
-                        elif 'type' in entry and 'day' not in entry:
-                            entry['day'] = column
-                        elif 'day' in entry and 'month'not in entry:
-                            entry['month'] = MonthTbl[ column ]
-                        elif 'month' in entry and 'dayOfMo' not in entry:
-                            entry['dayOfMo'] = column
-                        elif 'dayOfMo' in entry and 'time' not in entry:
-                            entry['time'] = column
-                        elif 'time' in entry and 'year' not in entry:
-                            entry['year'] = column
-                        elif 'year' in entry and 'nVolumes' not in entry:
-                            entry['nVolumes'] = column                            
-                if entry:
-                    log.append(entry)                    
-    logging.debug('log', log)
-    return log
+                entry['type'] = regex_groups.group(1)
+                entry['day'] = regex_groups.group(2)
+                entry['month'] = month_tbl_map[regex_groups.group(3)]
+                entry['dayOfMo'] = regex_groups.group(4)
+                entry['time'] = regex_groups.group(5)
+                entry['year'] = regex_groups.group(6)
+                entry['nVolumes'] = regex_groups.group(7)
+                revision_history.append(entry)
+            except Exception as e:
+                logging.debug(e)
+    f.close()
+    return revision_history
 
 
 def get_files_for_revision(uuid, host, path, rev, password, callback):
     duplicity_uri = get_backupUri(uuid, host, path)
     password_cmd = gen_passwordCmd(password)
     duplicity_cmd = 'PASSPHRASE=%s duplicity list-current-files --time %s %s %s' % ( password, rev, password_cmd, duplicity_uri)
+    duplicity_rgx = re.compile(r'(?!(Local|Last))(\S*\s*\S*\s*\S*\s*\S*\s*\S*)\s*(\S*)')
     f = os.popen(duplicity_cmd)    
-    for line in f:       
-        lineSplit = line.split( ' ', 5 )
-        if lineSplit[0] != 'Last' and lineSplit[0] != 'Local':
-            # remove blank entries from the list
-            nBlankLines = lineSplit.count('')
-            if nBlankLines:
-                tmpList = lineSplit[-1].split( ' ', nBlankLines )
-                lineSplit.pop()
-                lineSplit.extend( tmpList)
-            # search for path portion and separate out the date from the path
-            path = lineSplit[-1].strip('\n')
-            date = ' '.join(lineSplit[:-1])
-            callback([ (path), (date) ] )                                                    
+    for line in f:
+        regex_groups = duplicity_rgx.match(line)
+        if regex_groups:
+            try:
+                date = regex_groups.group(2)
+                path = regex_groups.group(3)
+                callback([path, date])
+            except Exception as e:
+                logging.debug(e)
     f.close()
     return
 
@@ -378,9 +361,8 @@ def export_revision(uuid, host, path, rev, target_path, password):
     fn = '%s/dupliback-archive_r%s.tar.gz' % (target_path, prety_rev)
     cmd = duplicity_cmd + ' && tar -czvf %s %s' % (fn, tmp_dir)
     f = os.popen(cmd)
-    output = f.read()
-    if settings.PROGRAM_DEBUG:        
-            sys.stdout.write(output)
+    for line in f:
+        logging.debug(line)
     f.close()
     return fn, tmp_dir
 
@@ -394,9 +376,8 @@ def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
         dst_dir = path + util.system_escape(restorePath)
         duplicity_cmd = 'PASSPHRASE=%s duplicity restore --force --time %s %s --file-to-restore %s %s %s' % ( password, rev, password_cmd, util.system_escape(restorePath[1:]), duplicity_uri, dst_dir )
     f = os.popen(duplicity_cmd)
-    output = f.read()
-    if settings.PROGRAM_DEBUG:        
-            sys.stdout.write(output)
+    for line in f:
+        logging.debug(line)
     f.close()    
     return
 
@@ -411,8 +392,6 @@ def get_status(uuid, host, path, password):
     logging.debug('$', duplicity_cmd)
     f = os.popen(duplicity_cmd)    
     for line in f:
-        if settings.PROGRAM_DEBUG: 
-            sys.stdout.write(line)            
         if line.startswith('DeletedFiles'):
             deleted.append( 'Deleted Files: %s' % (line.split(' ')[1] ) )
         elif line.startswith('ChangedFiles'):
@@ -425,6 +404,7 @@ def get_status(uuid, host, path, password):
             modified[0] = modified[0] + ' - Size of Modified Files: %s Bytes' % (line.split(' ')[1] )
         elif line.startswith('DeletedFileSize'):
             deleted[0] = deleted[0] + ( ' - Size of Deleted Files: %s Bytes' % (line.split(' ')[1] ) )
+        logging.debug(line)
     f.close()
     return added, modified, deleted
 
