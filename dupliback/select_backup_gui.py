@@ -29,12 +29,11 @@ class GUI(object):
             host = model.get_value(entry, 4)
             path = model.get_value(entry, 5)
             self.register_gui( manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password ) )
-        self.main_window.destroy()
+            self.close()
         return
     def passwordCancel(self):
         return 
     def launchCreateBackupGui(self, password=None):
-
         return
     
     def open_backup(self,a=None,b=None,c=None):

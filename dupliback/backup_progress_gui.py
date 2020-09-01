@@ -8,10 +8,9 @@ class GUI(object):
     def takedownProgressBar(self):
         logging.debug('progress bar take down')
         self.progressUpdater.cancel()
-        self.main_window.hide()
+        self.main_window.close()
+        self.unregister_gui(self)
         Gdk.flush()
-        self.unregister_gui(self)        
-        return
                 
     def updateProgressBar(self):
         self.progress_bar.pulse()

@@ -4,8 +4,9 @@ import util
 
 class GUI(object):
     def closedButton(self, dialog, response_id, user=None):
-        self.main_window.hide()
-        return
+        self.main_window.close()
+        self.unregister_gui(self)
+
     def __init__(self, register_gui, unregister_gui, parentWnd):
         self.register_gui = register_gui
         self.unregister_gui = unregister_gui

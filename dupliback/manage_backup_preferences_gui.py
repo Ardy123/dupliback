@@ -8,7 +8,7 @@ import logging
 class GUI(object):
 
   def close(self, a=None, b=None):
-    self.main_window.hide()
+    self.main_window.close()
     self.unregister_gui(self)
   
   def save(self, a=None):
@@ -38,6 +38,7 @@ class GUI(object):
     self.gtkbuilder = Gtk.Builder()
     self.gtkbuilder.add_from_file( os.path.join( util.RUN_FROM_DIR, 'glade', 'manage_backup_preferences.glade' ) )
     self.main_window = self.gtkbuilder.get_object('dialog')
+    self.main_window.connect("delete-event", self.close)
     self.gtkbuilder.get_object('button_cancel').connect('clicked', self.close)
     self.gtkbuilder.get_object('button_ok').connect('clicked', self.save)
     icon = self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON)

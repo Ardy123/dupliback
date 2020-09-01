@@ -7,7 +7,7 @@ from gi.repository import Gtk, GdkPixbuf
 class GUI(object):
 
     def close(self, a=None, b=None):
-        self.main_window.hide()
+        self.main_window.close()
         self.unregister_gui(self)
 
     def set_files(self, added, modified, deleted):
@@ -29,8 +29,8 @@ class GUI(object):
         self.gtkbuilder = Gtk.Builder()
         self.gtkbuilder.add_from_file( os.path.join( util.RUN_FROM_DIR, 'glade', 'backup_status.glade' ) )
         self.main_window = self.gtkbuilder.get_object('dialog')
-        icon = self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON)
-        self.main_window.set_icon(icon)
+        self.main_window.connect("delete-event", self.close)
+        self.main_window.set_icon(self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON))
         self.main_window.set_title('%s v%s - Backup Status' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION))
         self.gtkbuilder.get_object('button_close').connect('clicked', self.close)
         treeview_files_widget = self.gtkbuilder.get_object('treeview_filelist')

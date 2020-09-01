@@ -12,7 +12,7 @@ import logging
 class GUI(object):
 
 	def close(self, a=None, b=None):
-		self.main_window.hide()
+		self.main_window.close()
 		self.unregister_gui(self)
 		return
 	

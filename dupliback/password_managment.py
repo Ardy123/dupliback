@@ -26,10 +26,9 @@ class GUI(object):
     
     def newPassword_okClicked(self, button,a=None, b=None):
         password = self.new_password_window['password_entry1'].get_text()
-        if password == '':
-            password = None
-        self.new_password_window['main_window'].hide()
+        if password == '': password = None
         self.new_password_window['okFunc']( password )
+        self.close()
         return
     
     def newPassword_textTyped(self, editable, a=None, b=None ):
@@ -59,14 +58,12 @@ class GUI(object):
         return
     
     def passwordCheck_okClicked(self, a=None, b=None):
-        self.check_password_window['main_window'].hide()
-        self.check_password_window['okFunc']( self.check_password_window['password_entry_question'].get_text() )
-        return
+        self.check_password_window['okFunc'](self.check_password_window['password_entry_question'].get_text())
+        self.close()
     
     def passwordCheck_cancelClicked(self, a=None, b=None):
-        self.check_password_window['main_window'].hide()
         self.check_password_window['cancelFunc']()
-        return
+        self.close()
     
     def passwordCheck_textTyped(self, a=None, b=None):
         hashPswd = backup.gen_passwordEncrypt(self.check_password_window['password_entry_question'].get_text())
@@ -90,6 +87,11 @@ class GUI(object):
         self.check_password_window['password_check_ok'].set_sensitive(False)
         self.check_password_window['main_window'].show()
         return
+
+    def close(self, a=None, b=None):
+        self.new_password_window['main_window'].close()
+        self.check_password_window['main_window'].close()
+        self.unregister_gui(self)
     
     def __init__(self, register_gui, unregister_gui):
         self.register_gui = register_gui
@@ -99,6 +101,7 @@ class GUI(object):
         # Setup New Password Window
         self.new_password_window = {}
         self.new_password_window['main_window'] = self.gtkbuilder.get_object('new_password')
+        self.new_password_window['main_window'].connect("delete-event", self.close)
         self.new_password_window['password_entry_label1'] = self.gtkbuilder.get_object('password_entry_label1')
         self.new_password_window['password_entry_label2'] = self.gtkbuilder.get_object('password_entry_label2')
         self.new_password_window['password_entry1'] = self.gtkbuilder.get_object('password_entry1')
@@ -116,6 +119,7 @@ class GUI(object):
         # Setup Password Check Window 
         self.check_password_window = {}
         self.check_password_window['main_window'] = self.gtkbuilder.get_object('password_check')
+        self.check_password_window['main_window'].connect("delete-event", self.close)
         self.check_password_window['password_entry_question'] = self.gtkbuilder.get_object('password_entry_question')
         self.check_password_window['password_check_ok'] = self.gtkbuilder.get_object('password_check_ok')
         self.check_password_window['password_check_cancel'] = self.gtkbuilder.get_object('password_check_cancel')
@@ -126,4 +130,3 @@ class GUI(object):
         self.check_password_window['password_check_ok'].connect('clicked', self.passwordCheck_okClicked)
         self.check_password_window['password_check_cancel'].connect('clicked', self.passwordCheck_cancelClicked)
         self.check_password_window['password_entry_question'].connect('changed', self.passwordCheck_textTyped)
-        return
