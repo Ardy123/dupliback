@@ -1,21 +1,20 @@
 #!/usr/bin/python3
-import os
+
 import sys
 import traceback
-import settings
 import backup
-from gi.repository import Gtk, GObject
+from gi.repository import Gtk
+import select_backup_gui
 
 GUIS = set()
 
 
 def register_gui(gui):
-  GUIS.add( gui )
+  GUIS.add(gui)
   
 def unregister_gui(gui):
   GUIS.discard(gui)
   if not GUIS:
-    from gi.repository import Gtk
     Gtk.main_quit()
 
 def run_all_backups():
@@ -40,19 +39,16 @@ def run_backup(uuid, path):
     print('---=== skipped backup:', uuid, path, '===---')
   
 def launch_select_backup_gui():
-  import select_backup_gui
-  register_gui( select_backup_gui.GUI(register_gui, unregister_gui) )
+  register_gui(select_backup_gui.GUI(register_gui, unregister_gui))
 
 if __name__=='__main__':
-  import sys
   args = sys.argv[1:]
-
   if len(args):
-    print
+    print()
     print("------------------------------------------")
     print(" dupliBack - Backup for Linux")
     print("------------------------------------------")
-    print
+    print()
     if args[0] in ('-b','--backup-all'):
       run_all_backups()
     elif len(args)==2:

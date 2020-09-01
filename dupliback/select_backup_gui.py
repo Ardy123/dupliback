@@ -162,7 +162,7 @@ class GUI(object):
         treeview_backups_widget.connect( 'row-activated', self.open_backup )
         treeview_backups_widget.connect( 'cursor-changed', self.update_buttons )
         treeview_backups_widget.connect( 'move-cursor', self.update_buttons )
-        util.register_device_added_removed_callback(self.refresh_device_list)
+        util.register_device_added_removed_callback(self.refresh_device_list, self.refresh_device_list)
         self.refresh_device_list()
             
         self.main_window.show()
