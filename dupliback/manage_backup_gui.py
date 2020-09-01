@@ -345,8 +345,7 @@ class GUI(object):
                 tasks_running = False
                 def ui_update():
                     for x in running_tasks_model:
-                        print(x)
-                        x[3] = util.humanize_time( datetime.datetime.now() - x[2] )
+                        x[3] = util.humanize_time(datetime.datetime.now() - x[2])
                 GLib.idle_add(ui_update)
                 if tasks_running: time.sleep(1)
                 else: time.sleep(3)

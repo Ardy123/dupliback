@@ -69,7 +69,7 @@ class GUI(object):
         return
     
     def passwordCheck_textTyped(self, a=None, b=None):
-        hashPswd = backup.gen_passwordEncrypt( self.check_password_window['password_entry_question'].get_text().encode('utf-8') )
+        hashPswd = backup.gen_passwordEncrypt(self.check_password_window['password_entry_question'].get_text())
         if hashPswd == self.check_password_window['password']:
             self.check_password_window['pass_err_img'].hide()
             self.check_password_window['pass_err_labl'].hide()

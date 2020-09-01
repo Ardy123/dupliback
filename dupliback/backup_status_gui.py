@@ -11,18 +11,14 @@ class GUI(object):
         self.unregister_gui(self)
 
     def set_files(self, added, modified, deleted):
-        logging.debug(added, modified, deleted)
+        icon_added = self.main_window.render_icon(Gtk.STOCK_ADD, Gtk.IconSize.MENU)
+        icon_modified = self.main_window.render_icon(Gtk.STOCK_EDIT, Gtk.IconSize.MENU)
+        icon_deleted = self.main_window.render_icon(Gtk.STOCK_DELETE, Gtk.IconSize.MENU)
         model = self.gtkbuilder.get_object('treeview_filelist').get_model()
         model.clear()
-        for fn in added:
-            icon_added = self.main_window.render_icon(Gtk.STOCK_ADD, Gtk.IconSize.MENU)
-            model.append( (icon_added, fn) )
-        for fn in modified:
-            icon_modified = self.main_window.render_icon(Gtk.STOCK_EDIT, Gtk.IconSize.MENU)
-            model.append( (icon_modified, fn) )
-        for fn in deleted:
-            icon_deleted = self.main_window.render_icon(Gtk.STOCK_DELETE, Gtk.IconSize.MENU)
-            model.append( (icon_deleted, fn) )
+        model.append((icon_added, added))
+        model.append((icon_modified, modified))
+        model.append((icon_deleted, deleted))
     
     def __init__(self, register_gui, unregister_gui, uuid, host, path, parentWindow ):
         self.register_gui = register_gui
