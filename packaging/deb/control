@@ -6,7 +6,7 @@ Homepage: http://code.google.com/p/dupliback/
 Package: dupli.back
 Architecture: all
 Version:0.3.0
-Depends: python, python3-gi, duplicity, python-gobject
+Depends: python3, python3-gi, duplicity
 Description: dupli.back Backup software
  dupli.back Backup software for Linux Originally based on 'flyback', which was based on Apple's 'Time Machine'. 
  Dupli.back, is a full featured backup application built on top of the duplicity command line backup tool. It supports 
