@@ -65,6 +65,10 @@ class DeviceMonitor(threading.Thread):
         self.device_add_callback.append(device_add_callback)
         self.device_rem_callback.append(device_remove_callback)
 
+    def remCallback(self, device_add_callback, device_remove_callback):
+        self.device_add_callback.remove(device_add_callback)
+        self.device_rem_callback.remove(device_remove_callback)
+
     def dbus_object_add(self, *args):
         logging.info('dbus-monitor: device added')
         for callback in self.device_add_callback:
@@ -90,3 +94,6 @@ def register_device_added_removed_callback(add_callback, rem_callback):
     device_monitor_thread.addCallback(add_callback, rem_callback)
     if not device_monitor_thread.is_alive():
         device_monitor_thread.start()
+
+def unregister_device_added_removed_callback(add_callback, rem_callback):
+    device_monitor_thread.remCallback(add_callback, rem_callback)

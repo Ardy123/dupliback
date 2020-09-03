@@ -6,20 +6,19 @@ import hashlib
 import logging
 import socket
 import re
-import uuid as uuidlib
 import settings
 import util
-import error_dialog
 from gi.repository import Gtk, GObject, GdkPixbuf, GLib, Gdk
+import subprocess
+import error_dialog
 
-UUID_GVFS = uuidlib.uuid5(uuidlib.NAMESPACE_DNS, 'gvfs.dupliback.org')
 PROPERTIES_FILE = 'dupliback_properties.pickle'
 PREFERENCES_FILE = 'dupliback_preferences.pickle'
 
 
 def get_known_backups():
     backups = []
-    for uuid in get_all_devices():
+    for uuid in get_mounted_devices():
         try:
             path = get_mount_point_for_uuid(uuid)
             if path:
@@ -41,45 +40,22 @@ def get_known_backups():
     return backups
 
 def is_dev_present(uuid):
-    if uuid in get_gvfs_devices_and_paths():
-        return True
     return os.path.exists(os.path.join('/dev/disk/by-uuid/', uuid))
 
 def get_device_type(uuid):
-    if uuid in get_gvfs_devices_and_paths():
-        return 'gvfs'
-    elif os.path.exists(os.path.join('/dev/disk/by-uuid/', uuid)):
+    if os.path.exists(os.path.join('/dev/disk/by-uuid/', uuid)):
         return 'local'
     return None
 
 def get_hostname():
     return socket.gethostname()
-
-def get_gvfs_devices():
-    return [x[0] for x in get_gvfs_devices_and_paths()]
-
-def get_gvfs_devices_and_paths():
-    gvfs_device_lst= []
-    gvfs_root_path = os.path.join(os.path.expanduser('~'), '.gvfs')
-    try:
-        for gvfs_dir in os.listdir(gvfs_root_path):
-            mount_point = os.path.join(gvfs_root_path, gvfs_dir)
-            uuid = str(uuidlib.uuid5(UUID_GVFS, mount_point))
-            gvfs_device_lst.append((uuid, mount_point))
-    except OSError:
-        os.mkdir(gvfs_dir)
-        pass
-    return gvfs_device_lst
   
-def get_local_devices():
+def get_mounted_devices():
     return [os.path.basename(x) for x in os.listdir('/dev/disk/by-uuid/')]
-  
-def get_all_devices():
-    return get_local_devices() + get_gvfs_devices()
   
 def get_writable_devices():
     writable_uuids = []
-    for uuid in get_all_devices():
+    for uuid in get_mounted_devices():
         path = get_mount_point_for_uuid(uuid)
         if path:
             try:
@@ -112,13 +88,16 @@ def test_backup_assertions(uuid, host, path, test_exists=True):
         return False
     return True
 
+def exec_subprocess_cmd(shell_cmd):
+    return subprocess.Popen(shell_cmd, shell=True, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True).stdout
+
 
 def get_dev_paths_for_uuid(uuid):
     ret_paths= []
     dev_path = os.path.join('/dev/disk/by-uuid/', uuid)
     udevadm_cmd = 'udevadm info -q all -n "{}"'.format(dev_path)
     udevadm_rgx = re.compile(r'(N:|E: DEVLINKS=|E: DEVNAME=)\s*(.*)')
-    for line in os.popen(udevadm_cmd):
+    for line in exec_subprocess_cmd(udevadm_cmd):
         regex_groups = udevadm_rgx.match(line)
         if regex_groups:
             if 'N:' == regex_groups.group(1):
@@ -130,15 +109,10 @@ def get_dev_paths_for_uuid(uuid):
     return list(set(ret_paths))
 
 def get_mount_point_for_uuid(uuid):
-    # handle gfvs
-    for x,y in get_gvfs_devices_and_paths():
-        if uuid==x:
-            return y
-    # handle local devices
     dev_paths = get_dev_paths_for_uuid(uuid)
     mount_cmd = 'mount'
     mount_rgx = re.compile(r'\s*(\S*)\s*\S*\s*(\S*).*')
-    for line in os.popen(mount_cmd):
+    for line in exec_subprocess_cmd(mount_cmd):
         regex_groups = mount_rgx.match(line)
         if regex_groups and regex_groups.group(1) in dev_paths:
             return regex_groups.group(2)
@@ -154,7 +128,7 @@ def get_drive_name(uuid):
 def get_free_space(uuid):
     df_cmd = 'df "{}"'.format(get_mount_point_for_uuid(uuid))
     df_rgx = re.compile(r'(?!(Filesystem|df:))(\s*\S*\s*(\S*)\s*\S*\s*(\S*).*)')
-    for line in os.popen(df_cmd):
+    for line in exec_subprocess_cmd(df_cmd):
         regex_groups = df_rgx.match(line)
         if regex_groups and 0 == int(regex_groups.group(3)):  # unknown ammount of space
             return -1
@@ -191,7 +165,7 @@ def gen_exclusionCmd( preferences ):
 
 
 def rmdir(tmp):
-    for line in os.popen('rm -Rf "%s"' % tmp):
+    for line in exec_subprocess_cmd('rm -Rf "%s"' % tmp):
         logging.debug(line)
 
 
@@ -232,7 +206,7 @@ def backup(uuid, host, path, password):
     password_cmd = gen_passwordCmd(password)
     preferences_cmd = gen_exclusionCmd(get_preferences(uuid, host, path))
     duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s %s %s --allow-source-mismatch' % (password, preferences_cmd, password_cmd, path, duplicity_uri,)       
-    for line in os.popen(duplicity_cmd):
+    for line in exec_subprocess_cmd(duplicity_cmd):
         logging.debug(line)
     return
              
@@ -281,7 +255,7 @@ def get_revisions(uuid, host, path):
     month_tbl_map = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6, "Jul": 7, "Aug": 8,
                      "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}
     revision_history = []
-    for line in os.popen(duplicity_cmd):
+    for line in exec_subprocess_cmd(duplicity_cmd):
         regex_groups = duplicity_rgx.match(line)
         logging.debug(line)
         if regex_groups:
@@ -305,7 +279,7 @@ def get_files_for_revision(uuid, host, path, rev, password, callback):
     password_cmd = gen_passwordCmd(password)
     duplicity_cmd = 'PASSPHRASE={} duplicity list-current-files --time {} {} {}'.format(password, rev, password_cmd, duplicity_uri)
     duplicity_rgx = re.compile(r'(?!(Local|Last))(\S*\s*\S*\s*\S*\s*\S*\s*\S*)\s*(\S*)')
-    for line in os.popen(duplicity_cmd):
+    for line in subprocess.Popen(duplicity_cmd, shell=True, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True).stdout:
         regex_groups = duplicity_rgx.match(line)
         if regex_groups:
             try:
@@ -325,7 +299,7 @@ def export_revision(uuid, host, path, rev, target_path, password):
     duplicity_cmd = 'PASSPHRASE=%s duplicity restore --time %s %s %s %s' % ( password, rev, password_cmd, duplicity_uri,tmp_dir)
     fn = '%s/dupliback-archive_r%s.tar.gz' % (target_path, prety_rev)
     cmd = duplicity_cmd + ' && tar -czvf %s %s' % (fn, tmp_dir)
-    for line in os.popen(cmd):
+    for line in exec_subprocess_cmd(cmd):
         logging.debug(line)
     return fn, tmp_dir
 
@@ -338,7 +312,7 @@ def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
     else:
         dst_dir = path + util.system_escape(restorePath)
         duplicity_cmd = 'PASSPHRASE=%s duplicity restore --force --time %s %s --file-to-restore %s %s %s' % ( password, rev, password_cmd, util.system_escape(restorePath[1:]), duplicity_uri, dst_dir )
-    for line in os.popen(duplicity_cmd):
+    for line in exec_subprocess_cmd(duplicity_cmd):
         logging.debug(line)
 
 
@@ -349,7 +323,7 @@ def get_status(uuid, host, path, password):
     password_cmd = gen_passwordCmd(password)
     duplicity_cmd = 'PASSPHRASE={} duplicity {} --dry-run {} {}'.format(password, password_cmd, path, duplicity_uri)
     duplicity_rgx = re.compile(r'(DeletedFiles|ChangedFiles|NewFiles|NewFileSize|ChangedFileSize|DeletedFileSize)\s*(.*)')
-    for line in os.popen(duplicity_cmd):
+    for line in exec_subprocess_cmd(duplicity_cmd):
         regex_groups = duplicity_rgx.match(line)
         if regex_groups:
             status_type = regex_groups.group(1)
@@ -372,7 +346,7 @@ def get_status(uuid, host, path, password):
 
 def delete_backup(uuid, host, path):
     rm_cmd = 'rm -Rf "{}"'.format(get_backupPath(uuid, host, path))
-    for line in os.popen(rm_cmd):
+    for line in exec_subprocess_cmd(rm_cmd):
         logging.debug(line)
 
 def launch_error(error_msg):

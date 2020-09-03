@@ -17,9 +17,9 @@ import error_dialog
 class GUI(object):
 
     def close(self, a=None, b=None):
-        self.main_window.close()
+        util.unregister_device_added_removed_callback(self.refresh_device_list, self.refresh_device_list)
         self.unregister_gui(self)
-        return
+        self.main_window.destroy()
     
     def launchManageBackupGui(self, password=None):
         treeview_backups_widget = self.gtkbuilder.get_object('treeview_backups')
@@ -28,12 +28,10 @@ class GUI(object):
             uuid = model.get_value(entry, 3)
             host = model.get_value(entry, 4)
             path = model.get_value(entry, 5)
-            self.register_gui( manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password ) )
-            self.close()
-        return
+            self.register_gui(manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password))
+        self.close()
+
     def passwordCancel(self):
-        return 
-    def launchCreateBackupGui(self, password=None):
         return
     
     def open_backup(self,a=None,b=None,c=None):
@@ -51,13 +49,13 @@ class GUI(object):
                 if prefs['password_protect'] == True:
                     passMgntGui = password_managment.GUI(self.register_gui, self.unregister_gui)                    
                     self.register_gui( passMgntGui )
-                    passMgntGui.passwordCheckDialog_show( self.main_window, pswd, self.launchManageBackupGui, self.passwordCancel )
+                    passMgntGui.passwordCheckDialog_show(self.main_window, pswd, self.launchManageBackupGui, self.passwordCancel)
                 else:
                     self.launchManageBackupGui()       
             else:
                 logging.info('creating a new archive...')
-                self.register_gui( create_backup_gui.GUI(self.register_gui, self.unregister_gui) )
-            self.close()
+                self.register_gui(create_backup_gui.GUI(self.register_gui, self.unregister_gui))
+                self.close()
         return 
 
     def delete_backup(self,a=None,b=None,c=None):
@@ -138,7 +136,7 @@ class GUI(object):
         self.gtkbuilder = Gtk.Builder()
         self.gtkbuilder.add_from_file(os.path.join(util.RUN_FROM_DIR, 'glade', 'select_backup.glade'))
         self.main_window = self.gtkbuilder.get_object('select_backup_gui')
-        self.main_window.connect("delete-event", self.close )
+        self.main_window.connect("delete-event", self.close)
         icon = self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON)
         self.main_window.set_icon(icon)
         self.main_window.set_title('%s v%s - Select Backup' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION))

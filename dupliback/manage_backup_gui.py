@@ -1,6 +1,5 @@
 import datetime
 import threading
-import time
 import tempfile
 import os
 import logging
@@ -8,6 +7,8 @@ from gi.repository import Gtk, GObject, Gdk, GLib, GdkPixbuf
 import backup
 import settings
 import util
+import repeat_timer
+import manage_backup_preferences_gui
 import backup_progress_gui
 import backup_status_gui
 import about_gui
@@ -16,21 +17,30 @@ import about_gui
 class GUI(object):
 
     def close(self, a=None, b=None):
-        self.main_window.close()
+        self.status_bar_thread.cancel()
         self.unregister_gui(self)
+        self.main_window.destroy()
     
     def update_revisions(self):
         revisions = backup.get_revisions(self.uuid, self.host, self.path)
         treeview_revisions_widget = self.gtkbuilder.get_object('treeview_revisions')
         treeview_revisions_model = treeview_revisions_widget.get_model()
         treeview_revisions_model.clear()
-        for rev in revisions:
-            date = "%s %s/%s/%s %s" % (rev['day'],rev['month'],rev['dayOfMo'],rev['year'], rev['time'])
-            isoTime = "%s-%02d-%02dT%s" % (rev['year'],rev['month'],int(rev['dayOfMo']),rev['time'])
-            if rev == revisions[0] : type = 'epoch'
-            else: type = 'moment'
-            s = '[%s] %s\n<i>%s</i>' % ( type, util.pango_escape(date), util.pango_escape(rev['type']) )
-            treeview_revisions_model.append((s,isoTime))
+        # update revisions, if no revisions exist, prompt user to run backup
+        if revisions:
+            for rev in revisions:
+                date = "%s %s/%s/%s %s" % (rev['day'],rev['month'],rev['dayOfMo'],rev['year'], rev['time'])
+                isoTime = "%s-%02d-%02dT%s" % (rev['year'],rev['month'],int(rev['dayOfMo']),rev['time'])
+                if rev == revisions[0] : type = 'epoch'
+                else: type = 'moment'
+                s = '[%s] %s\n<i>%s</i>' % ( type, util.pango_escape(date), util.pango_escape(rev['type']) )
+                treeview_revisions_model.append((s,isoTime))
+        else:
+            md = Gtk.MessageDialog(None, Gtk.DialogFlags.DESTROY_WITH_PARENT, Gtk.MessageType.INFO, Gtk.ButtonsType.CLOSE, 'Welcome to dupli.back!')
+            md.format_secondary_markup(
+                'This is a brand new (and currently empty) backup repository.  To fill it with data, please click the "backup" button in the upper-left corner.')
+            md.run()
+            md.destroy()
         return
 
     def update_files(self,a=None):                         
@@ -148,7 +158,6 @@ class GUI(object):
         return rev
     
     def open_preferences(self):
-        import manage_backup_preferences_gui
         self.register_gui( manage_backup_preferences_gui.GUI(self.register_gui, self.unregister_gui, self.uuid, self.host, self.path) )
 
     def start_backup(self):
@@ -242,7 +251,7 @@ class GUI(object):
     def start_status(self):
         icon = self.main_window.render_icon(Gtk.STOCK_FIND, Gtk.IconSize.MENU)
         running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
-        i = running_tasks_model.append( ( icon, util.pango_escape('retrieving folder status since last backup...'), datetime.datetime.now(), '' ) )       
+        i = running_tasks_model.append((icon, util.pango_escape('retrieving folder status since last backup...'), datetime.datetime.now(), ''))
         gui = self
         def thread_func():
             added, modified, deleted = backup.get_status( gui.uuid, gui.host, gui.path, gui.password )
@@ -250,7 +259,7 @@ class GUI(object):
                 running_tasks_model.remove(i)
                 messageBox.takedownProgressBar()
                 gui2 = backup_status_gui.GUI(gui.register_gui, gui.unregister_gui, gui.uuid, gui.host, gui.path, gui.main_window )
-                gui.register_gui( gui2 )
+                gui.register_gui(gui2)
                 gui2.set_files(added, modified, deleted)
             GLib.idle_add(ui_update)
         messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving Status, Please Wait' )
@@ -281,8 +290,7 @@ class GUI(object):
         self.gtkbuilder.add_from_file( os.path.join( util.RUN_FROM_DIR, 'glade', 'manage_backup.glade' ) )
         self.main_window = self.gtkbuilder.get_object('window')
         self.main_window.connect("delete-event", self.close)
-        icon = self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON)
-        self.main_window.set_icon(icon)
+        self.main_window.set_icon(self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON))
         self.gtkbuilder.get_object('entry_drive_name').set_text( backup.get_drive_name(self.uuid) )
         self.gtkbuilder.get_object('entry_path').set_text( self.host +':'+ self.path )
         self.main_window.set_title('%s v%s - Manage Backup' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION))
@@ -340,27 +348,13 @@ class GUI(object):
         running_tasks_widget.set_model(running_tasks_model)
         running_tasks_widget.set_headers_visible(False)
         running_tasks_widget.set_property('rules-hint', True)
-        def thread_func():
-            while True:
-                tasks_running = False
-                def ui_update():
-                    for x in running_tasks_model:
-                        x[3] = util.humanize_time(datetime.datetime.now() - x[2])
-                GLib.idle_add(ui_update)
-                if tasks_running: time.sleep(1)
-                else: time.sleep(3)
-        thread = threading.Thread(target=thread_func)
-        thread.daemon = True
-        thread.start()
+        # status bar time update function
+        def ui_update():
+            for x in running_tasks_model:
+                x[3] = util.humanize_time(datetime.datetime.now() - x[2])
+        self.status_bar_thread = repeat_timer.RepeatTimer(3, GLib.idle_add, [ui_update])
+        self.status_bar_thread.daemon = True
+        self.status_bar_thread.start()
         self.main_window.show()
-    
-        # if no revisions exist, prompt user to run backup
-        if not backup.get_revisions(self.uuid, self.host, self.path):
-            s = 'Welcome to dupli.back!'
-            md = Gtk.MessageDialog(None, Gtk.DialogFlags.DESTROY_WITH_PARENT, Gtk.MessageType.INFO, Gtk.ButtonsType.CLOSE, s)
-            md.format_secondary_markup('This is a brand new (and currently empty) backup repository.  To fill it with data, please click the "backup" button in the upper-left corner.')
-            md.run()
-            md.destroy()
-    
 
 

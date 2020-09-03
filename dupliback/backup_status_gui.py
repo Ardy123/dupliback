@@ -7,8 +7,8 @@ from gi.repository import Gtk, GdkPixbuf
 class GUI(object):
 
     def close(self, a=None, b=None):
-        self.main_window.close()
         self.unregister_gui(self)
+        self.main_window.destroy()
 
     def set_files(self, added, modified, deleted):
         icon_added = self.main_window.render_icon(Gtk.STOCK_ADD, Gtk.IconSize.MENU)
