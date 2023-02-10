@@ -1,35 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.2 -->
+<!-- Generated with glade 3.38.2 -->
 <interface>
   <requires lib="gtk+" version="3.0"/>
   <object class="GtkDialog" id="dialog">
-    <property name="can_focus">False</property>
-    <property name="margin_left">2</property>
-    <property name="margin_right">2</property>
-    <property name="margin_top">2</property>
-    <property name="margin_bottom">2</property>
+    <property name="can-focus">False</property>
+    <property name="margin-left">2</property>
+    <property name="margin-right">2</property>
+    <property name="margin-top">2</property>
+    <property name="margin-bottom">2</property>
     <property name="title" translatable="yes">dupli.back</property>
-    <property name="window_position">center</property>
-    <property name="type_hint">normal</property>
-    <child type="titlebar">
-      <placeholder/>
-    </child>
+    <property name="window-position">center</property>
+    <property name="type-hint">normal</property>
     <child internal-child="vbox">
       <object class="GtkBox">
-        <property name="can_focus">False</property>
+        <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
           <object class="GtkButtonBox">
-            <property name="can_focus">False</property>
-            <property name="layout_style">end</property>
+            <property name="can-focus">False</property>
+            <property name="layout-style">end</property>
             <child>
               <object class="GtkButton" id="button_cancel">
                 <property name="label">gtk-cancel</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_stock">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -41,9 +38,9 @@
               <object class="GtkButton" id="button_ok">
                 <property name="label">gtk-ok</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">True</property>
-                <property name="use_stock">True</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">True</property>
+                <property name="use-stock">True</property>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -61,16 +58,16 @@
         <child>
           <object class="GtkBox">
             <property name="visible">True</property>
-            <property name="can_focus">False</property>
+            <property name="can-focus">False</property>
             <property name="orientation">vertical</property>
             <child>
               <object class="GtkCheckButton" id="checkbutton_exclude_audio">
                 <property name="label" translatable="yes">Exclude audio media files (.mp3, .aac, etc.)</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">False</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
                 <property name="halign">start</property>
-                <property name="draw_indicator">True</property>
+                <property name="draw-indicator">True</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -82,10 +79,10 @@
               <object class="GtkCheckButton" id="checkbutton_exclude_video">
                 <property name="label" translatable="yes">Exclude video media files (.mp4, etc.)</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">False</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
                 <property name="halign">start</property>
-                <property name="draw_indicator">True</property>
+                <property name="draw-indicator">True</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -97,10 +94,10 @@
               <object class="GtkCheckButton" id="checkbutton_exclude_trash">
                 <property name="label" translatable="yes">Exclude "trash" folders</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">False</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
                 <property name="halign">start</property>
-                <property name="draw_indicator">True</property>
+                <property name="draw-indicator">True</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -112,10 +109,10 @@
               <object class="GtkCheckButton" id="checkbutton_exclude_cache">
                 <property name="label" translatable="yes">Exclude "cache" folders</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">False</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
                 <property name="halign">start</property>
-                <property name="draw_indicator">True</property>
+                <property name="draw-indicator">True</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -127,10 +124,10 @@
               <object class="GtkCheckButton" id="checkbutton_exclude_vms">
                 <property name="label" translatable="yes">Exclude virtual machine images (.vmdk, etc.)</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">False</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
                 <property name="halign">start</property>
-                <property name="draw_indicator">True</property>
+                <property name="draw-indicator">True</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -142,10 +139,10 @@
               <object class="GtkCheckButton" id="checkbutton_exclude_iso">
                 <property name="label" translatable="yes">Exclude CD/DVD media images (.iso, etc.)</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
-                <property name="receives_default">False</property>
+                <property name="can-focus">True</property>
+                <property name="receives-default">False</property>
                 <property name="halign">start</property>
-                <property name="draw_indicator">True</property>
+                <property name="draw-indicator">True</property>
               </object>
               <packing>
                 <property name="expand">True</property>
@@ -156,17 +153,17 @@
             <child>
               <object class="GtkBox">
                 <property name="visible">True</property>
-                <property name="can_focus">False</property>
+                <property name="can-focus">False</property>
                 <property name="spacing">5</property>
                 <child>
                   <object class="GtkCheckButton" id="checkbutton_exclude_filesize">
                     <property name="label" translatable="yes">Exclude files over:</property>
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="tooltip_text" translatable="yes">Flyback uses "git" as it's backend database, however git fails when trying to archive files that can't fit into main memory.  Thus this option exists, until large file support is added to git.</property>
+                    <property name="can-focus">True</property>
+                    <property name="receives-default">False</property>
+                    <property name="tooltip-text" translatable="yes">Flyback uses "git" as it's backend database, however git fails when trying to archive files that can't fit into main memory.  Thus this option exists, until large file support is added to git.</property>
                     <property name="halign">start</property>
-                    <property name="draw_indicator">True</property>
+                    <property name="draw-indicator">True</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -177,12 +174,12 @@
                 <child>
                   <object class="GtkSpinButton" id="spinbutton_exclude_filesize_value">
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can-focus">True</property>
                     <property name="halign">start</property>
-                    <property name="margin_left">1</property>
-                    <property name="margin_right">1</property>
-                    <property name="invisible_char">●</property>
-                    <property name="snap_to_ticks">True</property>
+                    <property name="margin-left">1</property>
+                    <property name="margin-right">1</property>
+                    <property name="invisible-char">●</property>
+                    <property name="snap-to-ticks">True</property>
                     <property name="numeric">True</property>
                   </object>
                   <packing>
@@ -194,10 +191,10 @@
                 <child>
                   <object class="GtkLabel" id="label1">
                     <property name="visible">True</property>
-                    <property name="can_focus">False</property>
+                    <property name="can-focus">False</property>
                     <property name="halign">start</property>
-                    <property name="margin_left">2</property>
-                    <property name="margin_right">2</property>
+                    <property name="margin-left">2</property>
+                    <property name="margin-right">2</property>
                     <property name="label" translatable="yes">GB</property>
                   </object>
                   <packing>
@@ -211,6 +208,43 @@
                 <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="position">6</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <child>
+                  <object class="GtkCheckButton" id="checkbox_custom_filter_list">
+                    <property name="label" translatable="yes">Exclude Pattern</property>
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <property name="receives-default">False</property>
+                    <property name="draw-indicator">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkEntry" id="custom_exclude_filter_value">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <property name="placeholder-text" translatable="yes">*.tgz:*.zip</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">8</property>
               </packing>
             </child>
           </object>

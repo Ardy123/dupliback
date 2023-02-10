@@ -1,5 +1,5 @@
 PROGRAM_NAME = 'dupli.back'
-PROGRAM_VERSION = '0.3.0'
+PROGRAM_VERSION = '0.4.0'
 PROGRAM_DEBUG = False
 
 DEFAULT_PREFERENCES = {
@@ -10,7 +10,8 @@ DEFAULT_PREFERENCES = {
     'exclude_cache': True,
     'exclude_vms': True,
     'exclude_iso': True,
-    'exclude_filesize': 1,
+    'exclude_filesize': 0,
+    'exclude_filters': '',
     'password_protect': True,
 }
 FILEEXT_EXCLUDE_MAP = {

@@ -161,6 +161,8 @@ def gen_exclusionCmd( preferences ):
         if preference and preference in settings.FILEEXT_EXCLUDE_MAP:
             for file_extension in settings.FILEEXT_EXCLUDE_MAP[preference]:
                 exclusion_list.append('--exclude \'{}\''.format(file_extension))
+    for file_filter in re.split(r'(?<!\\):', preferences['exclude_filters']):
+        exclusion_list.append('--exclude \'{}\''.format(file_filter))
     return " ".join(exclusion_list)
 
 
@@ -205,7 +207,7 @@ def backup(uuid, host, path, password):
     # start backup  
     password_cmd = gen_passwordCmd(password)
     preferences_cmd = gen_exclusionCmd(get_preferences(uuid, host, path))
-    duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s %s %s --allow-source-mismatch' % (password, preferences_cmd, password_cmd, path, duplicity_uri,)       
+    duplicity_cmd = 'PASSPHRASE=%s duplicity %s %s %s %s --allow-source-mismatch' % (password, preferences_cmd, password_cmd, path, duplicity_uri,)
     for line in exec_subprocess_cmd(duplicity_cmd):
         logging.debug(line)
     return
@@ -229,6 +231,12 @@ def get_preferences(uuid, host, path):
         # version 0.1.0 did not support password encrypted backups
         if 'password_protect' not in o:
             o['password_protect'] = False
+        # version 0.2.0 did not support file size exclusions
+        if 'exclude_filesize' not in o or o['exclude_filesize'] == None:
+            o['exclude_filesize'] = 0
+        # version 0.3.0 did not store additional exclusion filters
+        if 'exclude_filters' not in o:
+            o['exclude_filters'] = ''
         preferences.update(o)    
     #nothing to do right now
     return preferences

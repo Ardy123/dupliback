@@ -19,11 +19,13 @@ class GUI(object):
       'exclude_cache': self.gtkbuilder.get_object('checkbutton_exclude_cache').get_active(),
       'exclude_vms': self.gtkbuilder.get_object('checkbutton_exclude_vms').get_active(),
       'exclude_iso': self.gtkbuilder.get_object('checkbutton_exclude_iso').get_active(),
+      'exclude_filesize': self.gtkbuilder.get_object('spinbutton_exclude_filesize_value').get_value(),
+      'exclude_filters': self.gtkbuilder.get_object('custom_exclude_filter_value').get_text(),
     }
-    if self.gtkbuilder.get_object('checkbutton_exclude_filesize').get_active():
-      preferences['exclude_filesize'] = self.gtkbuilder.get_object('spinbutton_exclude_filesize_value').get_value()
-    else:
-      preferences['exclude_filesize'] = None
+    if not self.gtkbuilder.get_object('checkbutton_exclude_filesize').get_active():
+      preferences['exclude_filesize'] = 0
+    if not self.gtkbuilder.get_object('checkbox_custom_filter_list').get_active():
+      preferences['exclude_filters'] = ''
     
     backup.save_preferences(self.uuid, self.host, self.path, preferences)
     self.close()
@@ -55,11 +57,22 @@ class GUI(object):
     self.gtkbuilder.get_object('checkbutton_exclude_vms').set_active(self.preferences.get('exclude_vms'))
     self.gtkbuilder.get_object('checkbutton_exclude_iso').set_active(self.preferences.get('exclude_iso'))
     self.gtkbuilder.get_object('checkbutton_exclude_filesize').set_active(bool(self.preferences.get('exclude_filesize')))
-    if self.preferences.get('exclude_filesize'):
-      self.gtkbuilder.get_object('spinbutton_exclude_filesize_value').set_value(self.preferences.get('exclude_filesize'))
-    else:
-      self.gtkbuilder.get_object('spinbutton_exclude_filesize_value').set_value(0)
-
+    self.gtkbuilder.get_object('spinbutton_exclude_filesize_value').set_value(self.preferences.get('exclude_filesize'))
+    self.gtkbuilder.get_object('checkbox_custom_filter_list').set_active(bool(self.preferences.get('exclude_filters')))
+    self.gtkbuilder.get_object('custom_exclude_filter_value').set_editable(bool(self.preferences.get('exclude_filters')))
+    self.gtkbuilder.get_object('custom_exclude_filter_value').set_can_focus(bool(self.preferences.get('exclude_filters')))
+    self.gtkbuilder.get_object('custom_exclude_filter_value').set_text(self.preferences.get('exclude_filters'))
+    self.gtkbuilder.get_object('checkbox_custom_filter_list').connect('clicked', lambda x: self.onClickCustomFilters())
     self.main_window.show()
-    
+
+  def onClickCustomFilters(self):
+    checkbox_activated = self.gtkbuilder.get_object('checkbox_custom_filter_list').get_active()
+    textbox = self.gtkbuilder.get_object('custom_exclude_filter_value')
+    textbox.set_editable(checkbox_activated)
+    textbox.set_can_focus(checkbox_activated)
+    if checkbox_activated:
+      textbox.grab_focus_without_selecting()
+    else:
+      textbox.set_text('')
+
 
