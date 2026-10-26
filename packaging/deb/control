@@ -7,7 +7,8 @@ Architecture: all
 Version: @VERSION@
 Recommends: pkexec
 Depends: python3, python3-gi, python3-dbus, gir1.2-gtk-3.0,
- gir1.2-gdkpixbuf-2.0, duplicity, udev, mount, xdg-utils
+ gir1.2-gdkpixbuf-2.0, duplicity (>= @DUPLICITY_VERSION@), udev, mount,
+ xdg-utils
 Description: dupli.back Backup software
  dupli.back Backup software for Linux Originally based on 'flyback', which was
  based on Apple's 'Time Machine'. Dupli.back, is a full featured backup

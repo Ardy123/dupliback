@@ -8,9 +8,11 @@ SRC_DIR="dupliback/src"
 #                0.5.0-<short commit>
 #   PKG_VERSION  VERSION with '~' for '-', so dpkg and rpm sort an
 #                unreleased build before its release
+#   DUPLICITY_VERSION  the oldest duplicity the packages accept
 set_versions() {
     VERSION="$(python3 ${SRC_DIR}/settings.py)"
     PKG_VERSION="${VERSION//-/\~}"
+    DUPLICITY_VERSION="$(python3 ${SRC_DIR}/settings.py --min-duplicity)"
 }
 
 # records the exact version in the package, which has no git checkout to ask

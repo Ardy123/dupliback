@@ -87,7 +87,11 @@ def get_hostname():
     return socket.gethostname()
 
 def get_mounted_devices():
-    return os.listdir(DEV_BY_UUID)
+    # containers and some VMs have no /dev/disk/by-uuid
+    try:
+        return os.listdir(DEV_BY_UUID)
+    except FileNotFoundError:
+        return []
 
 def is_writable(path):
     if not path:

@@ -90,6 +90,11 @@ def test_unknown_uuid_is_not_present():
     assert isinstance(backup.get_mounted_devices(), list)
 
 
+def test_no_devices_without_dev_disk_by_uuid(monkeypatch, tmp_path):
+    monkeypatch.setattr(backup, 'DEV_BY_UUID', str(tmp_path / 'missing'))
+    assert backup.get_mounted_devices() == []
+
+
 def test_known_device_type_is_local(monkeypatch):
     monkeypatch.setattr(backup.os.path, 'exists', lambda path: True)
     assert backup.get_device_type('ANY') == 'local'

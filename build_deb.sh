@@ -18,7 +18,8 @@ build_package() {
     stage_app debian/usr/share/dupliback
     cp packaging/deb/control debian/DEBIAN/
     # the version comes from settings.py only
-    sed -i "s/@VERSION@/${PKG_VERSION}/" debian/DEBIAN/control
+    sed -i -e "s/@VERSION@/${PKG_VERSION}/" \
+        -e "s/@DUPLICITY_VERSION@/${DUPLICITY_VERSION}/" debian/DEBIAN/control
     cp packaging/dupliback.desktop debian/usr/share/applications/
     # build package
     dpkg-deb --root-owner-group --build debian

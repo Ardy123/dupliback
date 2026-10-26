@@ -38,9 +38,13 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
 - An RPM package for Fedora.
 
 ### Changed
+- duplicity 3.0.6 or newer is required (Kubuntu/Ubuntu 26.04, Fedora 43+,
+  Debian unstable). Backups made with older versions stay readable.
 - dupli.back's and duplicity's caches are never backed up.
 
 ### Fixed
+- Backups were not listed on systems without `/dev/disk/by-uuid`, such as
+  containers and some virtual machines.
 - During summer time, restore, export and explore used a moment an hour off.
 - Right-clicking a moment or a file crashed. Right-clicking a moment now only
   opens its menu (**Restore Moment**, **Prune Moment**) without listing its
