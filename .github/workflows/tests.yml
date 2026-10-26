@@ -24,7 +24,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y git python3-venv python3-gi python3-dbus \
-            gir1.2-gtk-3.0 duplicity xvfb
+            gir1.2-gtk-3.0 duplicity udev xvfb
 
       - uses: actions/checkout@v4
 
