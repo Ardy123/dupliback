@@ -18,7 +18,7 @@ to support the following features.
 dupli.back needs Python 3, PyGObject with GTK 3, dbus-python and duplicity. On
 Debian/Ubuntu:
 
-    sudo apt-get install python3-venv python3-gi python3-dbus gir1.2-gtk-3.0 duplicity
+    sudo apt-get install python3-venv python3-gi python3-dbus gir1.2-gtk-3.0 duplicity xvfb
 
 Then create the development environment in `dupliback/.venv` and start the app:
 
@@ -34,9 +34,11 @@ and dbus-python, which need system libraries to build.
     .venv/bin/python -m pytest
     .venv/bin/python -m pytest --cov        # fails below 80% coverage
 
-GUI tests need a display; without one they are skipped (use `xvfb-run -a` on a
-headless machine). Tests that run duplicity use a temporary fake drive and never
-touch real backups.
+The GUI tests open and close hundreds of windows, so they run on a private Xvfb
+display that the test suite starts itself; nothing appears on your desktop. Without
+Xvfb (the `xvfb` package) they are skipped and coverage falls below 80%. Set
+`DUPLIBACK_GUI_TESTS_ON_DESKTOP=1` only if you really want them on your own display.
+Tests that run duplicity use a temporary fake drive and never touch real backups.
 
 ## Packages
 
