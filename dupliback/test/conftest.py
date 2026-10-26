@@ -227,7 +227,11 @@ class GuiEnv(object):
     # answers modal dialogs, records actions that would touch the desktop
     def __init__(self):
         self.dialog_response = None
+        # answers used, in order, before dialog_response
+        self.answers = []
         self.dialogs_run = []
+        # the shown texts of each message dialog run
+        self.messages = []
         self.opened_files = []
         self.takedowns = []
         self.chosen_folder = None
@@ -257,7 +261,12 @@ def gui_env(monkeypatch):
     env.dialog_response = Gtk.ResponseType.OK
     def run_dialog(dialog):
         env.dialogs_run.append(dialog)
-        return env.dialog_response
+        if isinstance(dialog, Gtk.MessageDialog):
+            env.messages.append([
+                label.get_text() for label in
+                dialog.get_message_area().get_children()
+                if label.get_visible()])
+        return env.answers.pop(0) if env.answers else env.dialog_response
     monkeypatch.setattr(Gtk.Dialog, 'run', run_dialog)
     monkeypatch.setattr(Gtk.FileChooserDialog, 'get_filename',
                         lambda self: env.chosen_folder)

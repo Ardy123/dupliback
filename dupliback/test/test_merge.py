@@ -5,6 +5,7 @@ import os
 import shutil
 import stat
 import sys
+import time
 import types
 
 import pytest
@@ -79,12 +80,20 @@ def step1(root):
     os.chmod(os.path.join(root, 'dir'), 0o700)
 
 
+def pin(root, *names, when):
+    # duplicity skips files whose mtime second and mode match its signature,
+    # so edits made within a second of another moment's must not share it
+    for name in names:
+        os.utime(os.path.join(root, name), (when, when))
+
+
 def step2(root):
     # re-add b, retarget the link, edit c
     write(os.path.join(root, 'b.txt'), 'b again')
     os.remove(os.path.join(root, 'link'))
     os.symlink('c.txt', os.path.join(root, 'link'))
     write(os.path.join(root, 'c.txt'), 'c2 longer')
+    pin(root, 'b.txt', 'c.txt', when=BASE + 250)
 
 
 def step3(root):
@@ -93,12 +102,14 @@ def step3(root):
     with open(os.path.join(root, 'big.bin'), 'r+b') as f:
         f.seek(1 << 20)
         f.write(os.urandom(1 << 16))
+    pin(root, 'a.txt', 'big.bin', when=BASE + 350)
 
 
 def step4(root):
     # a changes again, after any range ending at step3
     write(os.path.join(root, 'a.txt'), 'a after')
     write(os.path.join(root, 'dir', 'inner.txt'), 'inner changed')
+    pin(root, 'a.txt', os.path.join('dir', 'inner.txt'), when=BASE + 450)
 
 
 STEPS = [step0, step1, step2, step3, step4]
@@ -112,8 +123,11 @@ def chain(repo, tmp_path):
 
 
 def rewrite(repo, password, plan, **options):
+    # moments are rebuilt in the staging folder; the source is never written
+    source = snapshot(repo.path)
     journal = merge.prepare_rewrite(plan, password, **options)
     merge.commit_rewrite(backup.get_backupPath(*repo.args), password)
+    assert snapshot(repo.path) == source
     return journal
 
 
@@ -451,9 +465,11 @@ def test_prepare_as_admin_runs_the_helper(chain, tmp_path, no_pkexec):
     d = backup.get_backupPath(*repo.args)
     progress = []
     plan = merge.plan_squash(d, epochs[1:4])
-    journal = merge.prepare_as_admin(plan, 'pw', report=progress.append)
+    journal = merge.prepare_as_admin(plan, 'pw', report=lambda step, **fields:
+                                     progress.append((step, fields)))
     assert journal['phase'] == 'prepared'
-    assert any(text.startswith('Rebuilding') for text in progress)
+    assert ('check_new', {'moment': 1, 'of': 1,
+                          'when': time.ctime(epochs[3])}) in progress
     merge.commit_rewrite(d, 'pw')
     check_kept(repo, 'pw', before, tmp_path, [epochs[0]] + epochs[3:])
 

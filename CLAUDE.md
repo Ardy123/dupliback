@@ -73,3 +73,9 @@ Record changes under the version's `Unreleased` heading in `CHANGELOG.md`.
 4. Keep every line, code and comments, at most 80 columns. Indent with 4
    spaces, never tabs. Wrap inside brackets at natural break points, and split
    long strings into adjacent literals rather than exceeding the limit.
+
+5. Define UI elements (windows, dialogs, menus, labels) and user-facing text
+   in the Glade XML files in `dupliback/src/glade/`, marked
+   `translatable="yes"`, never in Python, so the UI can be edited and
+   translated in one place. Code loads them with `util.load_glade`, fills in
+   values (e.g. `{size}` placeholders) and connects signals.

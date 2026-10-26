@@ -363,16 +363,15 @@ def _regenerate(plan, k, moment, action, previous_end, work, password,
     tree = os.path.join(work, 'tree')
     tmp = os.path.join(work, 'tmp')
     logs = os.path.join(work, 'log')
-    when = time.ctime(moment.end)
     label = '%d-%d' % (k, moment.end)
     backup.rmdir(tree)
-    report('Restoring the moment of %s' % when)
+    report('unpack')
     _run_step(password, ['restore', '--time', str(moment.end),
                          '--tempdir', tmp],
               [backup.backup_uri(d), tree],
               os.path.join(logs, 'restore-%s.log' % label))
     before = set(os.listdir(target))
-    report('Rebuilding the moment of %s' % when)
+    report('save')
     options = [{'full': 'full', 'inc': 'incremental'}[action],
                '--current-time', str(moment.end),
                '--archive-dir', archive, '--name', 'chain%d' % k,
@@ -393,14 +392,14 @@ def _regenerate(plan, k, moment, action, previous_end, work, password,
     if not added or not all(name.startswith(prefixes) for name in added):
         raise MergeError('duplicity wrote unexpected files: %s'
                          % ', '.join(sorted(added)))
-    report('Checking the rebuilt moment of %s' % when)
+    report('check_new')
     _run_step(password, ['verify', '--compare-data', '--time',
                          str(moment.end), '--archive-dir', archive,
                          '--name', 'chain%d' % k, '--tempdir', tmp],
               [backup.backup_uri(target), tree],
               os.path.join(logs, 'verify-new-%s.log' % label))
     if thorough:
-        report('Checking the original moment of %s' % when)
+        report('check_old')
         _run_step(password, ['verify', '--compare-data', '--time',
                              str(moment.end), '--tempdir', tmp],
                   [backup.backup_uri(d), tree],
@@ -417,9 +416,11 @@ def _sha1(path):
     return digest.hexdigest()
 
 
-def prepare_rewrite(plan, password, report=lambda text: None, thorough=True):
+def prepare_rewrite(plan, password, report=lambda step, **fields: None,
+                    thorough=True):
     # builds and verifies the rewritten chains in a staging dir; the drive is
     # not changed. Returns the journal that commit_rewrite applies.
+    # report(step, **fields) names each step, for progress_<step> texts.
     d = plan.duplicity_dir
     if get_journal(d):
         raise MergeError('a prune or squash is already in progress')
@@ -432,9 +433,12 @@ def prepare_rewrite(plan, password, report=lambda text: None, thorough=True):
                'new': [], 'delete_first': False}
     _write_journal(d, journal)
     try:
-        report('Checking duplicity')
+        report('ready')
         _self_test(work)
         new = []
+        # the moments after a pruned or merged one are rebuilt in turn
+        numbers = {moment.end: n for n, moment in enumerate(plan.regenerated,
+                                                             1)}
         for k, steps in enumerate(plan.steps):
             kept = [m.end for m, action in steps if action != 'drop']
             if not kept:
@@ -451,12 +455,15 @@ def prepare_rewrite(plan, password, report=lambda text: None, thorough=True):
                                    os.path.join(target, name))
                     _seed_cache(d, archive, moment)
                 elif action != 'drop':
+                    at = dict(moment=numbers[moment.end], of=len(numbers),
+                              when=time.ctime(moment.end))
                     new += [(k, name) for name in _regenerate(
                         plan, k, moment, action, previous_end, work,
-                        password, thorough, report)]
+                        password, thorough,
+                        lambda step, at=at: report(step, **at))]
                 if action != 'drop':
                     previous_end = moment.end
-            report('Checking the rewritten history')
+            report('check_history')
             _check_chain(password, backup.backup_uri(target),
                          os.path.join(work, 'cache'), 'chain%d' % k,
                          os.path.join(work, 'log', 'status-%d.log' % k),
@@ -493,7 +500,7 @@ def hand_back(duplicity_dir, uid, gid):
         os.lchown(path, uid, gid)
 
 
-def prepare_as_admin(plan, password, report=lambda text: None,
+def prepare_as_admin(plan, password, report=lambda step, **fields: None,
                      thorough=True):
     # prepare_rewrite as root via pkexec, for moments with other users'
     # files; the password goes over a pipe, never on the command line
@@ -513,7 +520,8 @@ def prepare_as_admin(plan, password, report=lambda text: None,
         for line in helper_proc.stdout:
             kind, _, text = line.rstrip('\n').partition(': ')
             if kind == 'progress':
-                report(text)
+                step, fields = json.loads(text)
+                report(step, **fields)
             elif kind == 'error':
                 error = text
     if helper_proc.returncode in ADMIN_REFUSED:

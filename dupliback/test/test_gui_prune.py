@@ -6,7 +6,7 @@ import pytest
 
 import backup
 import merge
-from conftest import build_moments, write
+from conftest import build_moments, wait_until, write
 
 pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None,
                                 reason='duplicity is not installed')
@@ -93,13 +93,10 @@ def test_prune_and_merge_through_the_screen(manage, gui_env, action,
     assert not merge.get_journal(screen.duplicity_dir)
 
 
-def test_declining_the_second_confirmation_changes_nothing(manage, gui_env,
-                                                          monkeypatch):
+def test_declining_the_second_confirmation_changes_nothing(manage, gui_env):
     from gi.repository import Gtk
-    import util
     gui, epochs = manage
-    answers = iter([Gtk.ResponseType.YES, Gtk.ResponseType.NO])
-    monkeypatch.setattr(util, 'message_dialog', lambda *args: next(answers))
+    gui_env.answers = [Gtk.ResponseType.YES, Gtk.ResponseType.NO]
     screen = open_screen(gui, gui_env)
     files = sorted(os.listdir(screen.duplicity_dir))
     pick(screen, 1)
@@ -112,13 +109,8 @@ def test_declining_the_second_confirmation_changes_nothing(manage, gui_env,
 def test_other_users_files_use_administrator_rights(manage, gui_env,
                                                     monkeypatch):
     from gi.repository import Gtk
-    import util
     gui, epochs = manage
-    texts = []
-    def answer(message_type, buttons, title, text):
-        texts.append(text)
-        return Gtk.ResponseType.YES
-    monkeypatch.setattr(util, 'message_dialog', answer)
+    gui_env.dialog_response = Gtk.ResponseType.YES
     real = merge.estimate_rewrite
     monkeypatch.setattr(merge, 'estimate_rewrite', lambda *args: dict(
         real(*args), foreign_owned=3))
@@ -134,7 +126,7 @@ def test_other_users_files_use_administrator_rights(manage, gui_env,
     screen.prune()
     gui_env.wait_for_takedowns(3, timeout=300)
     assert used == [1]
-    assert 'administrator password' in texts[0]
+    assert 'administrator password' in ' '.join(gui_env.messages[0])
     assert revisions(gui) == 3
 
 
@@ -186,16 +178,13 @@ def test_prepared_change_is_dropped_on_open(chain, gui_env):
 
 
 def test_postponed_full_backup_is_explained(manage, gui_env, monkeypatch):
-    import util
     gui, epochs = manage
-    shown = []
-    monkeypatch.setattr(util, 'message_dialog',
-                        lambda *args: shown.append(args[2]))
     monkeypatch.setattr(backup, 'full_backup_status',
                         lambda *args: (True, False))
     gui.start_backup()
     gui_env.wait_for_takedowns(1, timeout=120)
-    assert shown == ['Full backup postponed']
+    assert [texts[0] for texts in gui_env.messages] == [
+        'Full backup postponed']
 
 
 def test_prune_moment_from_the_right_click_menu(manage, gui_env):
@@ -217,31 +206,23 @@ def test_prune_moment_from_the_right_click_menu(manage, gui_env):
     assert revisions(gui) == 3
 
 
-def test_pruning_the_only_moment_is_refused(repo, gui_env, monkeypatch):
+def test_pruning_the_only_moment_is_refused(repo, gui_env):
     import manage_backup_gui
-    import util
     build_moments(repo, 'pw', [edit(0)])
-    shown = []
-    monkeypatch.setattr(util, 'message_dialog',
-                        lambda *args: shown.append(args[2]))
     gui = manage_backup_gui.GUI(gui_env.register, gui_env.unregister,
                                 *repo.args, 'pw')
     rev = gui.gtkbuilder.get_object('treeview_revisions').get_model()[0][1]
     gui.prune_moment(rev)
-    assert shown == ['Prune or merge stopped']
+    assert [texts[0] for texts in gui_env.messages] == [
+        'Prune or merge stopped']
     gui.close()
 
 
 def test_little_temporary_space_is_a_warning_not_a_refusal(manage, gui_env,
                                                            monkeypatch):
     from gi.repository import Gtk
-    import util
     gui, epochs = manage
-    texts = []
-    def answer(message_type, buttons, title, text):
-        texts.append(text)
-        return Gtk.ResponseType.YES
-    monkeypatch.setattr(util, 'message_dialog', answer)
+    gui_env.dialog_response = Gtk.ResponseType.YES
     real = merge.estimate_rewrite
     monkeypatch.setattr(merge, 'estimate_rewrite', lambda *args: dict(
         real(*args), staging_free=1))
@@ -249,17 +230,15 @@ def test_little_temporary_space_is_a_warning_not_a_refusal(manage, gui_env,
     pick(screen, 1)
     screen.prune()
     gui_env.wait_for_takedowns(3, timeout=300)
-    assert 'temporary space' in texts[0]
+    confirm = ' '.join(gui_env.messages[0])
+    assert 'temporary space' in confirm and '1B is free' in confirm
+    assert 'administrator' not in confirm
     assert revisions(gui) == 3
 
 
 def test_unexpected_errors_are_shown_and_end_the_task(manage, gui_env,
                                                       monkeypatch):
-    import util
     gui, epochs = manage
-    shown = []
-    monkeypatch.setattr(util, 'message_dialog',
-                        lambda *args: shown.append(args[2:]))
     def broken(*args):
         raise RuntimeError('disk vanished')
     monkeypatch.setattr(merge, 'estimate_rewrite', broken)
@@ -267,5 +246,40 @@ def test_unexpected_errors_are_shown_and_end_the_task(manage, gui_env,
     pick(screen, 1)
     screen.prune()
     gui_env.wait_for_takedowns(1, timeout=120)
-    assert shown[0][0] == 'Prune or merge stopped'
-    assert 'disk vanished' in shown[0][1]
+    title, text = gui_env.messages[0]
+    assert title == 'Prune or merge stopped'
+    assert 'disk vanished' in text
+
+
+def test_refreshing_the_history_lists_no_files(manage, gui_env, monkeypatch):
+    # rebuilding the list after a prune or backup moved the cursor through
+    # every row, listing each moment's files
+    from gi.repository import Gtk
+    gui, epochs = manage
+    listed = []
+    monkeypatch.setattr(backup, 'list_files',
+                        lambda *args: listed.append(args[3]))
+    treeview = gui.gtkbuilder.get_object('treeview_revisions')
+    treeview.set_cursor(Gtk.TreePath.new_from_indices([1]), None, False)
+    gui_env.wait_for_takedowns(1)
+    gui.update_revisions()
+    wait_until(lambda: True)
+    assert len(listed) == 1
+    model, entry = treeview.get_selection().get_selected()
+    assert model[entry][1] == listed[0]
+
+
+def test_a_pruned_selected_moment_clears_the_files(manage, gui_env,
+                                                   monkeypatch):
+    from gi.repository import Gtk
+    gui, epochs = manage
+    monkeypatch.setattr(backup, 'list_files', lambda *args: None)
+    get = gui.gtkbuilder.get_object
+    get('treeview_revisions').set_cursor(
+        Gtk.TreePath.new_from_indices([1]), None, False)
+    gui_env.wait_for_takedowns(1)
+    assert get('toolbutton_restore').get_sensitive()
+    revisions = backup.get_revisions(gui.uuid, gui.host, gui.path)
+    gui.show_revisions(revisions[:1] + revisions[2:])
+    assert len(get('treeview_files').get_model()) == 0
+    assert not get('toolbutton_restore').get_sensitive()

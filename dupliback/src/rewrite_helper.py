@@ -3,7 +3,9 @@
 # hold other users' files; uses the user's caches and hands back what it makes.
 # usage: rewrite_helper.py <backup dir> --cache-home <dir>
 #        --owner <uid>:<gid> (--thorough|--quick) <kept epoch>...
-# Reads the password from stdin; prints 'progress: ...' and 'error: ...'.
+# Reads the password from stdin; prints 'progress: <json [step, fields]>'
+# and 'error: ...' lines.
+import json
 import os
 import pwd
 import sys
@@ -31,7 +33,8 @@ def main(args):
     import merge
     backup.SHOW_ERROR_DIALOGS = False
     password = sys.stdin.readline().rstrip('\n') or None
-    report = lambda text: print('progress: ' + text, flush=True)
+    report = lambda step, **fields: print(
+        'progress: ' + json.dumps([step, fields]), flush=True)
     try:
         merge.prepare_rewrite(merge.plan_rewrite(duplicity_dir, keep),
                               password, report, thorough)

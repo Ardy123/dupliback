@@ -2,6 +2,35 @@
 <!-- Generated with glade 3.22.2 -->
 <interface>
   <requires lib="gtk+" version="3.0"/>
+  <object class="GtkMenu" id="menu_files">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="menuitem_restore_selection">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Restore Selection</property>
+      </object>
+    </child>
+  </object>
+  <object class="GtkMenu" id="menu_moment">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="menuitem_restore_moment">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Restore Moment</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuitem_prune_moment">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Prune Moment</property>
+      </object>
+    </child>
+  </object>
   <object class="GtkImage" id="image_backup">
     <property name="visible">True</property>
     <property name="can_focus">False</property>

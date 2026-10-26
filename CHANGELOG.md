@@ -47,6 +47,8 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   files.
 - The Backup, Restore and Export toolbar icons were missing.
 - The progress window could stay open after an error.
+- After a backup or prune with a moment selected, the files of every
+  moment were listed at once.
 - Exclusion categories were applied even when switched off.
 - The "exclude files over N GB" option could not be set and had no effect.
 - Restoring single files failed with duplicity 2.0 and later, and restoring

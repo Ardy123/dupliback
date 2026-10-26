@@ -71,8 +71,20 @@ class GUI(object):
             backup.get_revisions(self.uuid, self.host, self.path))
 
     def show_revisions(self, revisions):
-        treeview_revisions_model = self.gtkbuilder.get_object(
-            'treeview_revisions').get_model()
+        treeview = self.gtkbuilder.get_object('treeview_revisions')
+        selected = self.get_selected_revision()
+        # refilling moves the cursor through the rows, and each move would
+        # list that moment's files
+        with treeview.handler_block(self.revision_cursor_handler):
+            self._fill_revisions(treeview.get_model(), revisions)
+            rows = [row.path for row in treeview.get_model()
+                    if row[1] == selected]
+            if rows:
+                treeview.set_cursor(rows[0], None, False)
+        if selected and not rows:
+            self.update_files(treeview)
+
+    def _fill_revisions(self, treeview_revisions_model, revisions):
         treeview_revisions_model.clear()
         # no revisions yet: prompt the user to run a backup
         if not revisions:
@@ -102,6 +114,9 @@ class GUI(object):
         model, entry = treeview_revisions.get_selection().get_selected()
         if not entry:
             treeview_files_model.clear()
+            for name in ('toolbutton_export', 'toolbutton_restore',
+                         'toolbutton_explore'):
+                self.gtkbuilder.get_object(name).set_sensitive(False)
             return
         for name in ('toolbutton_export', 'toolbutton_restore',
                      'toolbutton_explore'):
@@ -115,17 +130,10 @@ class GUI(object):
                           tree.add),
                       lambda result: treeview_files_view.set_model(tree.model))
 
-    def popup_menu(self, widget, event, items):
-        # a menu of (label, callback) items; attaching it to widget keeps it
-        # alive while shown and places it over widget
-        menu = Gtk.Menu()
-        menu.attach_to_widget(widget, None)
-        for label, callback in items:
-            item = Gtk.MenuItem(label=label)
-            item.connect('activate', lambda item, callback=callback: callback())
-            menu.append(item)
-            item.show()
-        menu.popup_at_pointer(event)
+    def popup_menu(self, name, event, clicked):
+        # the right-click menu name, for the rows clicked
+        self.clicked = clicked
+        self.gtkbuilder.get_object(name).popup_at_pointer(event)
 
     def fileview_mouse_notify(self, widget, event):
         if event.button != 3:
@@ -133,8 +141,7 @@ class GUI(object):
         selection = widget.get_selection().get_selected_rows()
         if not selection[1]:
             return False
-        self.popup_menu(widget, event, [
-            ('Restore Selection', lambda: self.start_restore(selection))])
+        self.popup_menu('menu_files', event, selection)
         return True
 
     def revview_mouse_notify(self, widget, event):
@@ -144,10 +151,8 @@ class GUI(object):
             return False
         hit = widget.get_path_at_pos(int(event.x), int(event.y))
         if hit:
-            rev = widget.get_model()[hit[0]][1]
-            self.popup_menu(widget, event, [
-                ('Restore Moment', lambda: self.start_restore(rev=rev)),
-                ('Prune Moment', lambda: self.prune_moment(rev))])
+            self.popup_menu('menu_moment', event,
+                            widget.get_model()[hit[0]][1])
         return True
 
     def prune_moment(self, rev):
@@ -175,10 +180,9 @@ class GUI(object):
             # listed here so duplicity does not block the gtk thread
             return backup.get_revisions(self.uuid, self.host, self.path)
         def show_notices(result):
-            for notice in notices:
-                util.message_dialog(Gtk.MessageType.INFO,
-                                    Gtk.ButtonsType.CLOSE,
-                                    'Full backup postponed', notice)
+            # the only notice: a due full backup was postponed
+            if notices:
+                util.run_message('dialog_full_postponed')
         self.run_task(Gtk.STOCK_SAVE, 'backing up: '+self.path,
                       'Backing Up, Please Wait', work, self.show_revisions,
                       after=show_notices)
@@ -304,11 +308,22 @@ class GUI(object):
         get('toolbutton_about').connect('clicked', lambda x: self.open_about() )
         get('toolbutton_prune').connect('clicked', lambda x: self.open_prune())
 
+        # right-click menus, attached so they show over their lists
+        get('menu_files').attach_to_widget(get('treeview_files'), None)
+        get('menu_moment').attach_to_widget(get('treeview_revisions'), None)
+        get('menuitem_restore_selection').connect(
+            'activate', lambda item: self.start_restore(self.clicked))
+        get('menuitem_restore_moment').connect(
+            'activate', lambda item: self.start_restore(rev=self.clicked))
+        get('menuitem_prune_moment').connect(
+            'activate', lambda item: self.prune_moment(self.clicked))
+
         # revision list
         treeview_revisions_widget = get('treeview_revisions')
         util.add_markup_column(treeview_revisions_widget, 0, 'History')
         treeview_revisions_widget.set_model(Gtk.ListStore( str, str ))
-        treeview_revisions_widget.connect( 'cursor-changed', self.update_files )
+        self.revision_cursor_handler = treeview_revisions_widget.connect(
+            'cursor-changed', self.update_files)
         treeview_revisions_widget.set_property('rules-hint', True)
         treeview_revisions_widget.connect("button_press_event",
                                           self.revview_mouse_notify)

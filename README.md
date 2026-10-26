@@ -34,10 +34,11 @@ The **Prune** button in the Manage window lists every moment with its size.
 **Prune selected** removes moments; **Merge selected** squashes consecutive
 moments into the newest one selected, which keeps its exact state. duplicity
 backups are chains where each moment stores the changes since the previous
-one, so a moment after a pruned one is rebuilt: dupli.back restores it into
-`$XDG_CACHE_HOME/dupliback/rewrite`, has duplicity re-diff it against its new
-predecessor, and verifies the result (and, by default, the original) before
-the drive is changed. On a large backup each rebuilt moment takes hours and
+one, so a moment after a pruned one is rebuilt: dupli.back unpacks it into
+`$XDG_CACHE_HOME/dupliback/rewrite` (never into the backed up folder, which
+is not touched), has duplicity re-diff it against its new predecessor, and
+verifies the result (and, by default, the original) before the drive is
+changed. On a large backup each rebuilt moment takes hours and
 needs about the size of the backed up files in temporary space. If the
 moments hold files owned by other users, only root can restore them with
 their owners, so the rebuild alone runs through `pkexec` (you are asked for
