@@ -10,16 +10,19 @@ import pytest
 import backup
 from conftest import mark_modified, pin_dir_mtimes, read, status_count, write
 
-pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None, reason='duplicity is not installed')
+pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None,
+                                reason='duplicity is not installed')
 
 
 def volumes(repo):
-    return [f for f in os.listdir(backup.get_backupPath(*repo.args)) if '.difftar' in f]
+    return [f for f in os.listdir(backup.get_backupPath(*repo.args))
+            if '.difftar' in f]
 
 
 def latest_revision(repo):
     rev = backup.get_revisions(*repo.args)[-1]
-    return '%s-%02d-%02dT%s' % (rev['year'], rev['month'], int(rev['dayOfMo']), rev['time'])
+    return '%s-%02d-%02dT%s' % (rev['year'], rev['month'],
+                                int(rev['dayOfMo']), rev['time'])
 
 
 def list_files(repo, rev, password):
@@ -33,7 +36,8 @@ def test_init_backup_twice_reports_instead_of_exiting(protected):
 
 
 def test_password_protected_backup_is_encrypted(protected):
-    assert volumes(protected) and all(v.endswith('.gpg') for v in volumes(protected))
+    assert volumes(protected) and all(v.endswith('.gpg')
+                                      for v in volumes(protected))
 
 
 def test_passwordless_backup_is_not_encrypted(repo):
@@ -49,8 +53,9 @@ def test_backup_applies_exclusions(repo):
     write(os.path.join(repo.path, 'big.bin'), 'x' * 4096)
     write(os.path.join(repo.path, 'small.bin'), 'x')
     backup.init_backup(*repo.args, None)
-    backup.save_preferences(*repo.args, {'exclude_audio': True, 'exclude_video': False,
-                                         'exclude_filesize': 2048 / 1024 ** 3})
+    backup.save_preferences(*repo.args, {
+        'exclude_audio': True, 'exclude_video': False,
+        'exclude_filesize': 2048 / 1024 ** 3})
     backup.backup(*repo.args, None)
     names = list_files(repo, latest_revision(repo), None)
     assert 'song.mp3' not in names and 'big.bin' not in names
@@ -58,12 +63,14 @@ def test_backup_applies_exclusions(repo):
 
 
 def test_listing_keeps_paths_with_spaces(protected):
-    assert 'my docs/file with spaces.txt' in list_files(protected, latest_revision(protected), 'pw')
+    assert 'my docs/file with spaces.txt' in list_files(
+        protected, latest_revision(protected), 'pw')
 
 
 def test_status_reports_changes_with_correct_labels(protected):
     write(os.path.join(protected.path, 'new.txt'), 'n')
-    modified_file = os.path.join(protected.path, 'my docs', 'file with spaces.txt')
+    modified_file = os.path.join(protected.path, 'my docs',
+                                 'file with spaces.txt')
     write(modified_file, 'v2')
     mark_modified(modified_file)
     os.remove(os.path.join(protected.path, 'small.bin'))
@@ -76,7 +83,8 @@ def test_status_reports_changes_with_correct_labels(protected):
 
 def test_status_without_changes(protected):
     added, modified, deleted = backup.get_status(*protected.args, 'pw')
-    assert [status_count('New Files', added), status_count('Modified Files', modified),
+    assert [status_count('New Files', added),
+            status_count('Modified Files', modified),
             status_count('Deleted Files', deleted)] == [0, 0, 0]
 
 
@@ -84,22 +92,27 @@ def test_restore_single_file_with_spaces(protected):
     rev = latest_revision(protected)
     target = os.path.join(protected.path, 'my docs', 'file with spaces.txt')
     write(target, 'changed')
-    assert backup.restore_to_revision(*protected.args, rev, 'pw', '/my docs/file with spaces.txt') == 0
+    assert backup.restore_to_revision(*protected.args, rev, 'pw',
+                                      '/my docs/file with spaces.txt') == 0
     assert read(target) == 'v1'
 
 
 def test_restore_whole_revision_over_existing_source(protected):
     rev = latest_revision(protected)
-    write(os.path.join(protected.path, 'my docs', 'file with spaces.txt'), 'changed')
+    write(os.path.join(protected.path, 'my docs', 'file with spaces.txt'),
+          'changed')
     os.remove(os.path.join(protected.path, 'small.bin'))
     assert backup.restore_to_revision(*protected.args, rev, 'pw') == 0
-    assert read(os.path.join(protected.path, 'my docs', 'file with spaces.txt')) == 'v1'
+    assert read(os.path.join(protected.path, 'my docs',
+                             'file with spaces.txt')) == 'v1'
     assert os.path.isfile(os.path.join(protected.path, 'small.bin'))
-    assert not [d for d in os.listdir(protected.path) if d.startswith('.dupliback_restore_')]
+    assert not [d for d in os.listdir(protected.path)
+                if d.startswith('.dupliback_restore_')]
 
 
 def test_export_creates_tarball_with_relative_paths(protected, tmp_path):
-    fn, tmp_dir = backup.export_revision(*protected.args, latest_revision(protected), str(tmp_path), 'pw')
+    fn, tmp_dir = backup.export_revision(
+        *protected.args, latest_revision(protected), str(tmp_path), 'pw')
     try:
         members = tarfile.open(fn).getnames()
         assert members and all(m.startswith('archive-') for m in members)
@@ -109,7 +122,8 @@ def test_export_creates_tarball_with_relative_paths(protected, tmp_path):
 
 
 def test_explore_restores_without_tarball(protected):
-    fn, tmp_dir = backup.export_revision(*protected.args, latest_revision(protected), None, 'pw')
+    fn, tmp_dir = backup.export_revision(
+        *protected.args, latest_revision(protected), None, 'pw')
     try:
         assert fn is None
         assert os.path.isfile(os.path.join(tmp_dir, 'small.bin'))
@@ -118,17 +132,19 @@ def test_explore_restores_without_tarball(protected):
 
 
 def test_export_with_wrong_password_fails(protected, tmp_path):
-    fn, tmp_dir = backup.export_revision(*protected.args, latest_revision(protected), str(tmp_path), 'wrong')
+    fn, tmp_dir = backup.export_revision(
+        *protected.args, latest_revision(protected), str(tmp_path), 'wrong')
     backup.rmdir(os.path.dirname(tmp_dir))
     assert fn is None
 
 
 def test_legacy_passwordless_backup_encrypted_with_none(repo):
-    # 0.3.0 - 0.4.0 encrypted password-less backups with the literal passphrase 'None'
+    # 0.3.0 - 0.4.0 encrypted password-less backups with passphrase 'None'
     write(os.path.join(repo.path, 'old'), 'old')
     backup.init_backup(*repo.args, None)
     subprocess.run(['duplicity', repo.path, backup.get_backupUri(*repo.args)],
-                   env=dict(os.environ, PASSPHRASE='None'), stdout=subprocess.DEVNULL, check=True)
+                   env=dict(os.environ, PASSPHRASE='None'),
+                   stdout=subprocess.DEVNULL, check=True)
     write(os.path.join(repo.path, 'newer'), 'new')
     assert backup.backup(*repo.args, None) == 0
     rev = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')

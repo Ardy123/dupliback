@@ -3,11 +3,11 @@
 
 SRC_DIR="dupliback/src"
 
-# Works out the version being built:
-#   VERSION      application version: 0.5.0 for a release (DUPLIBACK_RELEASE set),
-#                0.5.0-<short commit> otherwise
-#   PKG_VERSION  the same for package metadata, with '~' instead of '-' so dpkg and
-#                rpm sort an unreleased build before the release it leads up to
+# Sets the version being built:
+#   VERSION      0.5.0 for a release (DUPLIBACK_RELEASE set), else
+#                0.5.0-<short commit>
+#   PKG_VERSION  VERSION with '~' for '-', so dpkg and rpm sort an
+#                unreleased build before its release
 set_versions() {
     VERSION="$(python3 ${SRC_DIR}/settings.py)"
     PKG_VERSION="${VERSION//-/\~}"
@@ -49,7 +49,8 @@ parse_args() {
             -h|--help)
                 echo "Arguments:"
                 echo "   -b|--build - builds the package"
-                echo "   -r|--release - builds a release (version without commit), use before -b"
+                echo "   -r|--release - builds a release (no commit in the" \
+                     "version), use before -b"
                 echo "   -c|--clean - cleans the package"
                 echo "   -d|--debug - enables verbose output"
                 echo "   -h|--help  - this message"

@@ -2,8 +2,8 @@ import os
 import subprocess
 
 PROGRAM_NAME = 'dupli.back'
-# The only place the version is set. Releases are exactly this version; after a
-# release it is bumped by hand to the next one.
+# the only place the version is set. releases use it exactly; afterwards it
+# is bumped by hand to the next one.
 PROGRAM_BASE_VERSION = '0.5.0'
 PROGRAM_DEBUG = False
 
@@ -19,8 +19,11 @@ def get_program_version():
         return PROGRAM_BASE_VERSION
     # unreleased builds carry the commit they were built from
     try:
-        commit = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=os.path.dirname(os.path.abspath(__file__)),
-                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, universal_newlines=True, check=True).stdout.strip()
+        commit = subprocess.run(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            universal_newlines=True, check=True).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return PROGRAM_BASE_VERSION
     return '%s-%s' % (PROGRAM_BASE_VERSION, commit)

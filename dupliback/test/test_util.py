@@ -5,7 +5,8 @@ import util
 
 
 def test_glade_files_found_next_to_modules():
-    assert os.path.isfile(os.path.join(util.RUN_FROM_DIR, 'glade', 'select_backup.glade'))
+    assert os.path.isfile(os.path.join(util.RUN_FROM_DIR, 'glade',
+                                       'select_backup.glade'))
 
 
 def test_pango_escape():
@@ -32,7 +33,8 @@ def test_device_callbacks_can_be_removed_twice():
     monitor.addCallback(callback, callback)
     monitor.remCallback(callback, callback)
     monitor.remCallback(callback, callback)
-    assert monitor.device_add_callback == [] and monitor.device_rem_callback == []
+    assert (monitor.device_add_callback == []
+            and monitor.device_rem_callback == [])
 
 
 def test_device_monitor_dispatches_to_callbacks():
@@ -53,7 +55,8 @@ def test_device_monitor_listens_on_the_system_bus_once(monkeypatch):
     monitor = util.DeviceMonitor()
     monitor.start()
     monitor.start()
-    assert monitor.started and receivers == ['InterfacesAdded', 'InterfacesRemoved']
+    assert monitor.started and receivers == ['InterfacesAdded',
+                                             'InterfacesRemoved']
 
 
 def test_device_monitor_without_system_bus(monkeypatch):

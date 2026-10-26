@@ -1,4 +1,4 @@
-# the dupliback.py entry point: gui registry, command line parsing and backup runs
+# dupliback.py entry point: gui registry, command line parsing, backup runs
 import os
 import runpy
 
@@ -15,7 +15,8 @@ MAIN = os.path.join(SRC_DIR, 'dupliback.py')
 @pytest.fixture
 def quits(monkeypatch):
     calls = []
-    monkeypatch.setattr(dupliback.Gtk, 'main_quit', lambda: calls.append('quit'))
+    monkeypatch.setattr(dupliback.Gtk, 'main_quit',
+                        lambda: calls.append('quit'))
     return calls
 
 
@@ -37,9 +38,12 @@ def test_app_quits_when_last_window_closes(quits, monkeypatch):
 
 def test_run_all_backups_runs_every_known_backup(monkeypatch):
     monkeypatch.setattr(backup, 'get_known_backups', lambda: [
-        {'uuid': 'A', 'host': 'h', 'path': '/a'}, {'uuid': 'B', 'host': 'h', 'path': '/b'}])
+        {'uuid': 'A', 'host': 'h', 'path': '/a'},
+        {'uuid': 'B', 'host': 'h', 'path': '/b'}])
     runs = []
-    monkeypatch.setattr(dupliback, 'run_backup', lambda uuid, path, host=None: runs.append((uuid, path, host)))
+    monkeypatch.setattr(
+        dupliback, 'run_backup',
+        lambda uuid, path, host=None: runs.append((uuid, path, host)))
     dupliback.run_all_backups()
     assert runs == [('A', '/a', 'h'), ('B', '/b', 'h')]
 
@@ -49,21 +53,28 @@ def passing_backup(monkeypatch):
     # a backup that passes all assertions, with the duplicity run recorded
     runs = []
     monkeypatch.setattr(backup, 'test_backup_assertions', lambda *args: True)
-    monkeypatch.setattr(backup, 'backup', lambda uuid, host, path, password: runs.append((uuid, host, path, password)))
+    monkeypatch.setattr(
+        backup, 'backup',
+        lambda uuid, host, path, password:
+            runs.append((uuid, host, path, password)))
     monkeypatch.setattr(backup, 'upgrade_password_hash', lambda *args: False)
     return runs
 
 
 def test_run_backup_defaults_to_this_host(passing_backup, monkeypatch):
-    monkeypatch.setattr(backup, 'get_preferences', lambda *args: {'password_protect': False})
+    monkeypatch.setattr(backup, 'get_preferences',
+                        lambda *args: {'password_protect': False})
     dupliback.run_backup('U', '/src')
     assert passing_backup == [('U', backup.get_hostname(), '/src', None)]
 
 
-def test_run_backup_without_password_is_skipped(passing_backup, monkeypatch, capsys):
+def test_run_backup_without_password_is_skipped(passing_backup, monkeypatch,
+                                                capsys):
     monkeypatch.delenv('PASSPHRASE', raising=False)
-    monkeypatch.setattr(backup, 'get_preferences', lambda *args: {'password_protect': True})
-    monkeypatch.setattr(backup, 'get_properties', lambda *args: {'password': backup.gen_passwordEncrypt('pw')})
+    monkeypatch.setattr(backup, 'get_preferences',
+                        lambda *args: {'password_protect': True})
+    monkeypatch.setattr(backup, 'get_properties', lambda *args: {
+        'password': backup.gen_passwordEncrypt('pw')})
     dupliback.run_backup('U', '/src', 'h')
     assert passing_backup == []
     assert 'wrong or missing password' in capsys.readouterr().out
@@ -71,9 +82,12 @@ def test_run_backup_without_password_is_skipped(passing_backup, monkeypatch, cap
 
 def test_run_backup_prompts_on_a_terminal(passing_backup, monkeypatch):
     monkeypatch.delenv('PASSPHRASE', raising=False)
-    monkeypatch.setattr(backup, 'get_preferences', lambda *args: {'password_protect': True})
-    monkeypatch.setattr(backup, 'get_properties', lambda *args: {'password': backup.gen_passwordEncrypt('pw')})
-    monkeypatch.setattr(dupliback.sys.stdin, 'isatty', lambda: True, raising=False)
+    monkeypatch.setattr(backup, 'get_preferences',
+                        lambda *args: {'password_protect': True})
+    monkeypatch.setattr(backup, 'get_properties', lambda *args: {
+        'password': backup.gen_passwordEncrypt('pw')})
+    monkeypatch.setattr(dupliback.sys.stdin, 'isatty', lambda: True,
+                        raising=False)
     monkeypatch.setattr(dupliback.getpass, 'getpass', lambda prompt: 'pw')
     dupliback.run_backup('U', '/src', 'h')
     assert passing_backup == [('U', 'h', '/src', 'pw')]
@@ -81,7 +95,8 @@ def test_run_backup_prompts_on_a_terminal(passing_backup, monkeypatch):
 
 def test_run_backup_reports_failures(monkeypatch, capsys):
     monkeypatch.setattr(backup, 'test_backup_assertions', lambda *args: True)
-    monkeypatch.setattr(backup, 'get_preferences', lambda *args: {'password_protect': False})
+    monkeypatch.setattr(backup, 'get_preferences',
+                        lambda *args: {'password_protect': False})
     def failing_backup(*args):
         raise RuntimeError('disk on fire')
     monkeypatch.setattr(backup, 'backup', failing_backup)
@@ -91,8 +106,11 @@ def test_run_backup_reports_failures(monkeypatch, capsys):
 
 def test_main_without_arguments_opens_the_gui(monkeypatch):
     opened = []
-    monkeypatch.setattr(select_backup_gui, 'GUI', lambda register, unregister: opened.append('select') or object())
-    monkeypatch.setattr(dupliback.Gtk, 'main', lambda: opened.append('main loop'))
+    monkeypatch.setattr(
+        select_backup_gui, 'GUI',
+        lambda register, unregister: opened.append('select') or object())
+    monkeypatch.setattr(dupliback.Gtk, 'main',
+                        lambda: opened.append('main loop'))
     run_main(monkeypatch)
     assert opened == ['select', 'main loop']
 

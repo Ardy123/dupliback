@@ -4,9 +4,10 @@ import logging
 from gi.repository import GLib
 
 
-def run_with_progress(register_gui, unregister_gui, parentWnd, msg, work, on_done=None, after=None):
-    # shows a progress dialog while work() runs on a worker thread, then on the gtk
-    # thread calls on_done(result), takes the dialog down and calls after(result)
+def run_with_progress(register_gui, unregister_gui, parentWnd, msg, work,
+                      on_done=None, after=None):
+    # shows a progress dialog while work() runs on a thread, then on the gtk
+    # thread calls on_done(result), takes the dialog down, calls after(result)
     progress = GUI(register_gui, unregister_gui, parentWnd, msg)
     def finish(result):
         if on_done:
@@ -15,7 +16,7 @@ def run_with_progress(register_gui, unregister_gui, parentWnd, msg, work, on_don
         if after:
             after(result)
         return False
-    # the dialog exists before the thread starts, so finish can always take it down
+    # dialog is up before the thread starts, so finish can always take it down
     threading.Thread(target=lambda: GLib.idle_add(finish, work())).start()
     return progress
 

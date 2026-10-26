@@ -13,7 +13,8 @@ def test_production_hashing_is_slow_enough():
 
 
 def test_hash_is_salted_pbkdf2():
-    first, second = backup.gen_passwordEncrypt('s3cret'), backup.gen_passwordEncrypt('s3cret')
+    first, second = (backup.gen_passwordEncrypt('s3cret'),
+                     backup.gen_passwordEncrypt('s3cret'))
     assert first.startswith('pbkdf2_sha256$')
     assert first != second
 
@@ -50,8 +51,10 @@ def test_upgrade_legacy_hash(repo):
     assert upgraded.startswith('pbkdf2_sha256$')
     assert backup.check_password('pw', upgraded)
     after = backup.get_properties(*repo.args)
-    assert {k: v for k, v in after.items() if k != 'password'} == {k: v for k, v in before.items() if k != 'password'}
-    assert not [f for f in os.listdir(backup.get_backupPath(*repo.args)) if f.endswith('.tmp')]
+    assert ({k: v for k, v in after.items() if k != 'password'}
+            == {k: v for k, v in before.items() if k != 'password'})
+    assert not [f for f in os.listdir(backup.get_backupPath(*repo.args))
+                if f.endswith('.tmp')]
 
 
 def test_upgrade_with_wrong_password_keeps_legacy_hash(repo):
@@ -69,7 +72,8 @@ def test_upgrade_is_a_noop_for_pbkdf2_hashes(repo):
     assert stored_hash(repo) == current
 
 
-@pytest.mark.skipif(os.geteuid() == 0, reason='root can write to read-only directories')
+@pytest.mark.skipif(os.geteuid() == 0,
+                    reason='root can write to read-only directories')
 def test_upgrade_on_read_only_drive_keeps_legacy_hash(repo):
     backup.init_backup(*repo.args, 'pw')
     write_legacy_hash(repo, 'pw')

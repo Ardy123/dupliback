@@ -15,7 +15,8 @@ DEVICE_ICONS = {'gvfs': Gtk.STOCK_NETWORK, 'local': Gtk.STOCK_HARDDISK}
 
 def pango_escape(message):
     assert isinstance(message, str)
-    return message.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    return (message.replace('&', '&amp;').replace('<', '&lt;')
+            .replace('>', '&gt;'))
 
 
 def load_glade(name):
@@ -25,9 +26,11 @@ def load_glade(name):
 
 
 def setup_window(window, title):
-    # the hard disk icon and "dupli.back v<version> - <title>" shared by the main windows
-    window.set_icon(window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON))
-    window.set_title('%s v%s - %s' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION, title))
+    # the icon and "dupli.back v<version> - <title>" shared by the main windows
+    window.set_icon(window.render_icon(Gtk.STOCK_HARDDISK,
+                                       Gtk.IconSize.BUTTON))
+    window.set_title('%s v%s - %s' % (settings.PROGRAM_NAME,
+                                      settings.PROGRAM_VERSION, title))
 
 
 def add_icon_column(treeview, column=0):
@@ -46,12 +49,15 @@ def add_markup_column(treeview, column, title='', pad=None):
 
 
 def device_icon(window, device_type):
-    return window.render_icon(DEVICE_ICONS.get(device_type, Gtk.STOCK_DIALOG_QUESTION), Gtk.IconSize.DIALOG)
+    return window.render_icon(
+        DEVICE_ICONS.get(device_type, Gtk.STOCK_DIALOG_QUESTION),
+        Gtk.IconSize.DIALOG)
 
 
 def message_dialog(message_type, buttons, text, secondary_markup):
     # runs a modal message dialog and returns the response
-    dialog = Gtk.MessageDialog(None, Gtk.DialogFlags.DESTROY_WITH_PARENT, message_type, buttons, text)
+    dialog = Gtk.MessageDialog(None, Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                               message_type, buttons, text)
     dialog.format_secondary_markup(secondary_markup)
     response = dialog.run()
     dialog.destroy()
@@ -88,9 +94,9 @@ def humanize_time(td):
   
 
 class DeviceMonitor(object):
-    # dbus signals are delivered through the default glib main loop that Gtk.main()
-    # runs, so callbacks run on the gtk thread. Running a second main loop on its own
-    # thread made that thread dispatch gtk callbacks too, which crashed gtk.
+    # dbus signals arrive via the default glib main loop Gtk.main() runs, so
+    # callbacks run on the gtk thread. a second main loop on its own thread
+    # made that thread dispatch gtk callbacks too, which crashed gtk.
     def __init__(self):
         self.device_add_callback = []
         self.device_rem_callback = []
@@ -101,7 +107,7 @@ class DeviceMonitor(object):
         self.device_rem_callback.append(device_remove_callback)
 
     def remCallback(self, device_add_callback, device_remove_callback):
-        # windows may be closed more than once, so ignore callbacks that are already gone
+        # windows may be closed more than once; ignore callbacks already gone
         if device_add_callback in self.device_add_callback:
             self.device_add_callback.remove(device_add_callback)
         if device_remove_callback in self.device_rem_callback:
@@ -126,10 +132,15 @@ class DeviceMonitor(object):
         try:
             system_bus = dbus.SystemBus()
         except dbus.exceptions.DBusException as e:
-            logging.warning('no system bus, drive changes will not be detected: %s', e)
+            logging.warning('no system bus, drive changes will not be '
+                            'detected: %s', e)
             return
-        system_bus.add_signal_receiver(self.dbus_object_add, 'InterfacesAdded', 'org.freedesktop.DBus.ObjectManager')
-        system_bus.add_signal_receiver(self.dbus_object_rem, 'InterfacesRemoved', 'org.freedesktop.DBus.ObjectManager')
+        system_bus.add_signal_receiver(
+            self.dbus_object_add, 'InterfacesAdded',
+            'org.freedesktop.DBus.ObjectManager')
+        system_bus.add_signal_receiver(
+            self.dbus_object_rem, 'InterfacesRemoved',
+            'org.freedesktop.DBus.ObjectManager')
         self.started = True
 
 device_monitor = DeviceMonitor()

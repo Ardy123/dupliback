@@ -17,9 +17,10 @@ build_package() {
     stage_app rpmbuild/SOURCES/src -p
     cp packaging/dupliback.desktop COPYING rpmbuild/SOURCES/
     # build package
-    rpmbuild --define "_topdir $PWD/rpmbuild" --define "pkg_version ${PKG_VERSION}" \
-        -bb packaging/rpm/dupliback.spec
-    mv rpmbuild/RPMS/noarch/dupli.back-${PKG_VERSION}-1.noarch.rpm dupli.back-${VERSION}.noarch.rpm
+    rpmbuild --define "_topdir $PWD/rpmbuild" \
+        --define "pkg_version ${PKG_VERSION}" -bb packaging/rpm/dupliback.spec
+    mv rpmbuild/RPMS/noarch/dupli.back-${PKG_VERSION}-1.noarch.rpm \
+        dupli.back-${VERSION}.noarch.rpm
     set +e
 }
 
