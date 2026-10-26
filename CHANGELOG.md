@@ -72,6 +72,7 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   and listing its files.
 - The Backup, Restore and Export toolbar buttons had lost their icons in the
   GTK 3 port.
+- The progress window stayed open when an error was shown as a task ended.
 - Exclusion categories were always applied, even when switched off, and empty
   custom filters added an empty exclusion.
 - The "exclude files over N GB" option could not be set (its spin button had no

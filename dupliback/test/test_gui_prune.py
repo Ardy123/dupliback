@@ -230,3 +230,42 @@ def test_pruning_the_only_moment_is_refused(repo, gui_env, monkeypatch):
     gui.prune_moment(rev)
     assert shown == ['Prune or merge stopped']
     gui.close()
+
+
+def test_little_temporary_space_is_a_warning_not_a_refusal(manage, gui_env,
+                                                           monkeypatch):
+    from gi.repository import Gtk
+    import util
+    gui, epochs = manage
+    texts = []
+    def answer(message_type, buttons, title, text):
+        texts.append(text)
+        return Gtk.ResponseType.YES
+    monkeypatch.setattr(util, 'message_dialog', answer)
+    real = merge.estimate_rewrite
+    monkeypatch.setattr(merge, 'estimate_rewrite', lambda *args: dict(
+        real(*args), staging_free=1))
+    screen = open_screen(gui, gui_env)
+    pick(screen, 1)
+    screen.prune()
+    gui_env.wait_for_takedowns(3, timeout=300)
+    assert 'temporary space' in texts[0]
+    assert revisions(gui) == 3
+
+
+def test_unexpected_errors_are_shown_and_end_the_task(manage, gui_env,
+                                                      monkeypatch):
+    import util
+    gui, epochs = manage
+    shown = []
+    monkeypatch.setattr(util, 'message_dialog',
+                        lambda *args: shown.append(args[2:]))
+    def broken(*args):
+        raise RuntimeError('disk vanished')
+    monkeypatch.setattr(merge, 'estimate_rewrite', broken)
+    screen = open_screen(gui, gui_env)
+    pick(screen, 1)
+    screen.prune()
+    gui_env.wait_for_takedowns(1, timeout=120)
+    assert shown[0][0] == 'Prune or merge stopped'
+    assert 'disk vanished' in shown[0][1]

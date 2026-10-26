@@ -181,15 +181,31 @@ def _chain_read_bytes(plan, moment):
     return 0
 
 
+def _lstat(path):
+    # None if it vanished or can't be read
+    try:
+        return os.lstat(path)
+    except OSError:
+        return None
+
+
+def _walk(path, skip):
+    # every path under path, without the directories in skip
+    for root, dirs, files in os.walk(path):
+        dirs[:] = [name for name in dirs
+                   if os.path.realpath(os.path.join(root, name)) not in skip]
+        yield from (os.path.join(root, name) for name in dirs + files)
+
+
 def _source_scan(path):
-    # (bytes, files owned by another user or a group we are not in)
+    # (bytes on disk, files of other users or groups); allocated size, as
+    # sparse files report far more than they hold
     groups = set(os.getgroups()) | {os.getgid()}
     uid = os.getuid()
-    stats = (os.lstat(os.path.join(root, name))
-             for root, dirs, files in os.walk(path) for name in dirs + files)
+    skip = {os.path.realpath(cache) for cache in backup.own_cache_dirs()}
     total = foreign = 0
-    for stat in stats:
-        total += stat.st_size
+    for stat in filter(None, map(_lstat, _walk(path, skip))):
+        total += stat.st_blocks * 512
         foreign += stat.st_uid != uid or stat.st_gid not in groups
     return total, foreign
 
@@ -458,29 +474,29 @@ def prepare_rewrite(plan, password, report=lambda text: None, thorough=True):
         raise
 
 
+def _tree(root):
+    # root and everything under it
+    yield root
+    yield from (os.path.join(top, name) for top, dirs, files in os.walk(root)
+                for name in dirs + files)
+
+
 def hand_back(duplicity_dir, uid, gid):
-    # after the prepare step ran as root on a user's behalf: what it created in
-    # the app's own places goes back to that user. Never the restored source
-    # tree, which keeps its owners and is gone by now.
+    # gives the user what the root prepare step created in the app's places
     roots = [os.path.join(duplicity_dir, JOURNAL_FILE),
              staging_dir(duplicity_dir),
              backup.duplicity_cache_dir(duplicity_dir),
              backup.listing_cache_dir(duplicity_dir)]
-    for root in filter(os.path.lexists, roots):
-        paths = [root] + [os.path.join(top, name)
-                          for top, dirs, files in os.walk(root)
-                          for name in dirs + files]
-        for path in paths:
-            if os.lstat(path).st_uid == 0:
-                os.lchown(path, uid, gid)
+    created = (path for root in filter(os.path.lexists, roots)
+               for path in _tree(root) if os.lstat(path).st_uid == 0)
+    for path in created:
+        os.lchown(path, uid, gid)
 
 
 def prepare_as_admin(plan, password, report=lambda text: None,
                      thorough=True):
-    # prepare_rewrite as root through pkexec, for moments with other users'
-    # files, which only root can restore with their owners. The helper uses
-    # this user's caches and hands back what it creates; the password goes
-    # over a pipe, never on the command line.
+    # prepare_rewrite as root via pkexec, for moments with other users'
+    # files; the password goes over a pipe, never on the command line
     helper = os.path.join(util.RUN_FROM_DIR, 'rewrite_helper.py')
     command = ADMIN_COMMAND + [
         sys.executable, helper, plan.duplicity_dir,

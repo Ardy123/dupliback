@@ -4,8 +4,8 @@ import shutil
 
 import backup
 
-from conftest import (requires_display, run_in_main_loop, stored_hash, write,
-                      write_legacy_hash)
+from conftest import (requires_display, run_in_main_loop, stored_hash,
+                      wait_until, write, write_legacy_hash)
 
 pytestmark = requires_display
 
@@ -86,3 +86,22 @@ def test_opening_backup_upgrades_legacy_hash(repo, monkeypatch):
     run_in_main_loop(build)
     assert opened
     assert stored_hash(repo).startswith('pbkdf2_sha256$')
+
+
+def test_progress_dialog_goes_away_while_another_dialog_is_modal():
+    # close() is ignored while another window is modal
+    from gi.repository import Gtk
+    import backup_progress_gui
+    def build():
+        other = Gtk.Window()
+        other.show()
+        other.grab_add()
+        progress = backup_progress_gui.GUI(lambda g: None, lambda g: None,
+                                           None, 'testing')
+        progress.takedownProgressBar()
+        wait_until(lambda: True)
+        visible = progress.main_window.get_visible()
+        other.grab_remove()
+        other.destroy()
+        return visible
+    assert run_in_main_loop(build) is False

@@ -2,6 +2,7 @@
 # util first, it pins Gtk to 3.0
 import util
 from gi.repository import Gtk, GObject
+import logging
 import os
 import time
 
@@ -23,6 +24,9 @@ def _guarded(work):
             return 'ok', work(*args)
         except merge.MergeError as e:
             return 'error', str(e)
+        except Exception as e:
+            logging.exception('prune or merge failed')
+            return 'error', 'unexpected error: %s' % e
     return run
 
 
@@ -130,20 +134,20 @@ class RewriteFlow(object):
             return _show_error(estimate)
         # other users' files can only be restored with their owners by root
         as_admin = bool(estimate['foreign_owned']) and os.geteuid() != 0
-        if estimate['staging_needed'] > estimate['staging_free']:
-            return _show_error(
-                'Rebuilding needs about %s free in %s; only %s is free.' % (
-                    util.humanize_bytes(estimate['staging_needed']),
-                    merge.staging_dir(self.duplicity_dir),
-                    util.humanize_bytes(estimate['staging_free'])))
         text = ('These moments will no longer be restorable:\n%s\n\n'
                 'Up to %s can be freed. %d moment(s) will be rebuilt and '
-                'checked, which takes about %.1f hours and %s of temporary '
-                'space. The backup stays unchanged until you confirm again.'
+                'checked, which takes about %.1f hours. The backup stays '
+                'unchanged until you confirm again.'
                 % (util.pango_escape(_describe(estimate['dropped'])),
                    util.humanize_bytes(estimate['max_freed']),
-                   len(estimate['regenerated']), estimate['hours'],
-                   util.humanize_bytes(estimate['staging_needed'])))
+                   len(estimate['regenerated']), estimate['hours']))
+        if estimate['regenerated']:
+            # a rough upper bound; running out stops and rolls back cleanly
+            text += ('\n\nRebuilding needs up to about %s of temporary space '
+                     'in %s; %s is free.' % (
+                         util.humanize_bytes(estimate['staging_needed']),
+                         merge.staging_dir(self.duplicity_dir),
+                         util.humanize_bytes(estimate['staging_free'])))
         if as_admin and estimate['regenerated']:
             text += ('\n\n%d files belong to other users, so rebuilding runs '
                      'with administrator rights and will ask for the '

@@ -1,11 +1,9 @@
 #!/usr/bin/python3
-# The prepare step of a prune or merge, run as root by merge.prepare_as_admin
-# through pkexec when moments contain other users' files. It works on the
-# invoking user's caches and hands everything it creates back to them.
+# The prepare step of a prune or merge, run as root via pkexec when moments
+# hold other users' files; uses the user's caches and hands back what it makes.
 # usage: rewrite_helper.py <backup dir> --cache-home <dir>
 #        --owner <uid>:<gid> (--thorough|--quick) <kept epoch>...
-# The backup password is the first line of stdin; progress and errors are
-# printed as 'progress: ...' and 'error: ...' lines.
+# Reads the password from stdin; prints 'progress: ...' and 'error: ...'.
 import os
 import pwd
 import sys

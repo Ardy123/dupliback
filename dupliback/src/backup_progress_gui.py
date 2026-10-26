@@ -30,7 +30,8 @@ class GUI(object):
         logging.debug('progress bar take down')
         GLib.source_remove(self.pulse_timer)
         self.unregister_gui(self)
-        self.main_window.close()
+        # close() is ignored while another dialog is modal
+        self.main_window.destroy()
 
     def set_message(self, text):
         self.message.set_label(text)

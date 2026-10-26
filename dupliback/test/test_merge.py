@@ -477,3 +477,18 @@ def test_refused_admin_rights(chain, monkeypatch):
     with pytest.raises(merge.MergeError, match='not granted'):
         merge.prepare_as_admin(merge.plan_squash(d, epochs[1:3]), 'pw')
     assert drive_files(repo) == files
+
+
+def test_source_scan_counts_allocated_space_and_skips_own_caches(
+        tmp_path, monkeypatch):
+    source = tmp_path / 'source'
+    write(str(source / 'small.txt'), 'x' * 10)
+    with open(str(source / 'sparse.img'), 'wb') as f:
+        f.truncate(1 << 30)
+    monkeypatch.setenv('XDG_CACHE_HOME', str(source / 'cache'))
+    with open(str(source / 'big.bin'), 'wb') as f:
+        f.write(os.urandom(1 << 20))
+    write(str(source / 'cache' / 'duplicity' / 'x' / 'sig'), 'y' * (1 << 20))
+    total, foreign = merge._source_scan(str(source))
+    assert (1 << 20) <= total < 3 << 20
+    assert foreign == 0
