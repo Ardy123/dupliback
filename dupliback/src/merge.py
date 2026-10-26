@@ -230,18 +230,35 @@ def _remove_journal(duplicity_dir):
 
 # --- running duplicity
 
+def _log_records(log_file):
+    # duplicity's machine log: a 'LEVEL code' line, then '. ' message lines
+    level, text = None, []
+    with open(log_file) as log:
+        for line in log:
+            if line.startswith('. '):
+                text.append(line[2:].rstrip('\n'))
+                continue
+            if level:
+                yield level, ' '.join(text)
+            level, text = line.split(' ', 1)[0], []
+    if level:
+        yield level, ' '.join(text)
+
+
 def _run_step(password, options, operands, log_file):
     # a duplicity step that must succeed cleanly: restores and verifies only
     # warn about skipped files, so any warning fails the rewrite
+    if options[0] == 'verify':
+        # differences are only logged at info level
+        options = options + ['--verbosity', 'info']
     returncode = backup.run_duplicity(
         password, options + ['--log-file', log_file], operands)
-    with open(log_file) as log:
-        warnings = [line.strip() for line in log
-                    if line.startswith(('WARNING', 'ERROR'))]
-    if returncode != 0 or warnings:
+    problems = [text for level, text in _log_records(log_file)
+                if level in ('WARNING', 'ERROR') or 'Difference found' in text]
+    if returncode != 0 or problems:
         raise MergeError('duplicity %s failed (exit %d)%s; see %s' % (
             options[0], returncode,
-            ': ' + warnings[0] if warnings else '', log_file))
+            ''.join('\n- ' + text for text in problems[:3]), log_file))
 
 
 def _duplicity_major():
