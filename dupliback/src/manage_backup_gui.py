@@ -1,8 +1,9 @@
 import datetime
 import os
+# util first, it pins Gtk to 3.0
+import util
 from gi.repository import Gtk, GObject, GLib, GdkPixbuf
 import backup
-import util
 import manage_backup_preferences_gui
 import backup_progress_gui
 import backup_status_gui
@@ -10,34 +11,24 @@ import about_gui
 
 
 class FileTreeBuilder(object):
-    # builds the file tree of a revision from duplicity's listing, which lists each
-    # directory before its contents
+    # Builds the tree from duplicity's listing. Each path's parent is found by matching
+    # its directories, depth by depth, against the previous row's ancestors.
     def __init__(self, model):
         self.model = model
-        self.currPath = [['', None]]
-
-    def findPath(self, pathStr):
-        # find the delta in the curr path and the desired path
-        dirSplit = pathStr.split('/')
-        if dirSplit[0] != '': dirSplit.insert( 0, '' )
-        # unwind cached path until it matches desired path
-        del self.currPath[len(dirSplit):]
-        for ndx, name in enumerate(dirSplit):
-            if len(self.currPath) > ndx and self.currPath[ndx][0] != name:
-                del self.currPath[ndx:]
-                break
-        # find adjusted path - because path will always be the last added path just find the last path and add it.
-        # name is the directory the loop stopped at
-        itr = self.currPath[-1][1]
-        if self.currPath[-1][0] != name:
-            itr = self.model.iter_nth_child( itr, self.model.iter_n_children( itr ) - 1)
-            self.currPath.append([name, itr])
-        return itr
+        # [name, row] for the previous row and its ancestors; the root has no row
+        self.stack = [['', None]]
 
     def add(self, pathDateLst):
-        path, _, filename = pathDateLst[0].rpartition('/')
-        insert_itr = self.model.append(parent=self.findPath(path))
-        self.model[insert_itr] = [filename, pathDateLst[1]]
+        *dirs, filename = pathDateLst[0].split('/')
+        # keep the ancestors shared with the previous row
+        depth = 1
+        while depth < len(self.stack) and depth <= len(dirs) and self.stack[depth][0] == dirs[depth - 1]:
+            depth += 1
+        del self.stack[depth:]
+        # directories missing from the listing get an empty row
+        for name in dirs[depth - 1:]:
+            self.stack.append([name, self.model.append(self.stack[-1][1], [name, ''])])
+        self.stack.append([filename, self.model.append(self.stack[-1][1], [filename, pathDateLst[1]])])
 
 
 class GUI(object):
