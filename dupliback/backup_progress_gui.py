@@ -1,7 +1,7 @@
 import os
 import util
 import logging
-from gi.repository import Gtk
+from gi.repository import Gtk, GLib
 import repeat_timer
 
 class GUI(object):
@@ -30,6 +30,8 @@ class GUI(object):
         self.main_window.show()        
         # start progress bar updates
         logging.debug('progress bar put up')
-        self.progress_thread = repeat_timer.RepeatTimer(0.5, self.progress_bar.pulse)
+        # the timer runs on its own thread, so hand the pulse to the gtk main loop
+        self.progress_thread = repeat_timer.RepeatTimer(0.5, GLib.idle_add, [self.progress_bar.pulse])
+        self.progress_thread.daemon = True
         self.progress_thread.start()
     

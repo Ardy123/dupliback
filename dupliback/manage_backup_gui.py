@@ -1,6 +1,5 @@
 import datetime
 import threading
-import tempfile
 import os
 import logging
 from gi.repository import Gtk, GObject, Gdk, GLib, GdkPixbuf
@@ -214,8 +213,11 @@ class GUI(object):
             gui = self
             def thread_func():
                 fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )
-                backup.rmdir(tmp_path)
-                util.open_file(fn)
+                backup.rmdir(os.path.dirname(tmp_path))
+                if fn:
+                    util.open_file(fn)
+                else:
+                    backup.launch_error('Failed to export revision %s' % rev)
                 def ui_task():
                     running_tasks_model.remove(i)
                     messageBox.takedownProgressBar()
@@ -229,16 +231,17 @@ class GUI(object):
         dialog.destroy()
 
     def start_explore(self):
-        target_dir = tempfile.mkdtemp(suffix='_duplibackback')
         rev = self.get_selected_revision()
         icon = self.main_window.render_icon(Gtk.STOCK_DIRECTORY, Gtk.IconSize.MENU)
         running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
-        i = running_tasks_model.append( ( icon, util.pango_escape('preparing folder for exploration: '+target_dir), datetime.datetime.now(), '' ) )
+        i = running_tasks_model.append( ( icon, util.pango_escape('preparing folder for exploration of revision: '+rev), datetime.datetime.now(), '' ) )
         gui = self
         def thread_func():
-            fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )
-            os.remove( fn )
-            util.open_file(tmp_path)
+            fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, None, gui.password )
+            if os.path.isdir(tmp_path):
+                util.open_file(tmp_path)
+            else:
+                backup.launch_error('Failed to restore revision %s for exploration' % rev)
             def ui_update():
                 running_tasks_model.remove(i)
                 messageBox.takedownProgressBar()
@@ -296,10 +299,11 @@ class GUI(object):
         self.main_window.set_title('%s v%s - Manage Backup' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION))
     
         # toolbar
-        self.gtkbuilder.get_object('toolbutton_backup').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
+        can_backup = backup.test_backup_assertions(self.uuid, self.host, self.path)
+        self.gtkbuilder.get_object('toolbutton_backup').set_sensitive( can_backup )
         self.gtkbuilder.get_object('toolbutton_backup').connect('clicked', lambda x: self.start_backup() )
         self.gtkbuilder.get_object('toolbutton_restore').connect('clicked', self.restore_button_notify )
-        self.gtkbuilder.get_object('toolbutton_status').set_sensitive( backup.test_backup_assertions(self.uuid, self.host, self.path) )
+        self.gtkbuilder.get_object('toolbutton_status').set_sensitive( can_backup )
         self.gtkbuilder.get_object('toolbutton_status').connect('clicked', lambda x: self.start_status() )
         self.gtkbuilder.get_object('toolbutton_export').connect('clicked', lambda x: self.start_export() )
         self.gtkbuilder.get_object('toolbutton_explore').connect('clicked', lambda x: self.start_explore() )

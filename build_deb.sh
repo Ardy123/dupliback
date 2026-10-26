@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
-VERSION="`python dupliback/settings.py`"
-VERSION="${VERSION}_r`git rev-list --count HEAD`"
+PKG_VERSION="`python dupliback/settings.py`"
+VERSION="${PKG_VERSION}_r`git rev-list --count HEAD`"
 
 clean_package() {
     echo "Cleaning Package & Buid related Files"
@@ -21,6 +21,8 @@ build_package() {
     cp dupliback/glade/*.glade debian/usr/share/dupliback/glade/
     cp dupliback/images/* debian/usr/share/dupliback/images/
     cp packaging/deb/control debian/DEBIAN/
+    # keep the package version in sync with settings.py
+    sed -i "s/^Version:.*/Version: ${PKG_VERSION}/" debian/DEBIAN/control
     cp packaging/dupliback.desktop debian/usr/share/applications/
     # build package
     dpkg-deb --build debian

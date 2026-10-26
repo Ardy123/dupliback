@@ -43,7 +43,7 @@ class GUI(object):
             path = model.get_value(entry, 5)
             pswd = model.get_value(entry, 6)
             if uuid and host and path:
-                logging.info('opening... drive:%s'%uuid, 'path:%s'%path)
+                logging.info('opening... drive:%s path:%s', uuid, path)
                 # check if a password is needed
                 prefs = backup.get_preferences(uuid, host, path)
                 if prefs['password_protect'] == True:
@@ -73,7 +73,7 @@ class GUI(object):
                 md = Gtk.MessageDialog(None, Gtk.DialogFlags.DESTROY_WITH_PARENT, Gtk.MessageType.WARNING, Gtk.ButtonsType.YES_NO, util.pango_escape(title))
                 md.format_secondary_markup(s)
                 if Gtk.ResponseType.YES==md.run():
-                    logging.info('deleting',uuid,host,path)
+                    logging.info('deleting %s %s %s', uuid, host, path)
                     gui = self
                     def thread_proc():
                         backup.delete_backup(uuid, host, path)
@@ -81,7 +81,7 @@ class GUI(object):
                         GLib.idle_add(messageBox.takedownProgressBar)
 
                     thread = threading.Thread(target=thread_proc)
-                    messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving Status, Please Wait' )
+                    messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Deleting Backup, Please Wait' )
                     thread.start()
                 md.destroy()
         return

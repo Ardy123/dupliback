@@ -58,7 +58,14 @@ class GUI(object):
         return
     
     def passwordCheck_okClicked(self, a=None, b=None):
-        self.check_password_window['okFunc'](self.check_password_window['password_entry_question'].get_text())
+        # hashing is deliberately slow, so check the password once on ok rather than on every keystroke
+        password = self.check_password_window['password_entry_question'].get_text()
+        if not backup.check_password(password, self.check_password_window['password']):
+            self.check_password_window['pass_err_img'].show()
+            self.check_password_window['pass_err_labl'].show()
+            self.check_password_window['password_check_ok'].set_sensitive(False)
+            return
+        self.check_password_window['okFunc'](password)
         self.close()
     
     def passwordCheck_cancelClicked(self, a=None, b=None):
@@ -66,15 +73,9 @@ class GUI(object):
         self.close()
     
     def passwordCheck_textTyped(self, a=None, b=None):
-        hashPswd = backup.gen_passwordEncrypt(self.check_password_window['password_entry_question'].get_text())
-        if hashPswd == self.check_password_window['password']:
-            self.check_password_window['pass_err_img'].hide()
-            self.check_password_window['pass_err_labl'].hide()
-            self.check_password_window['password_check_ok'].set_sensitive(True)
-        else:
-            self.check_password_window['pass_err_img'].show()
-            self.check_password_window['pass_err_labl'].show()
-            self.check_password_window['password_check_ok'].set_sensitive(False)
+        self.check_password_window['pass_err_img'].hide()
+        self.check_password_window['pass_err_labl'].hide()
+        self.check_password_window['password_check_ok'].set_sensitive(self.check_password_window['password_entry_question'].get_text() != '')
         return
     
     def passwordCheckDialog_show(self, parentWnd, correctPassHash, okFunc, cancelFunc):
@@ -85,6 +86,8 @@ class GUI(object):
         self.check_password_window['main_window'].set_transient_for( parentWnd )
         self.check_password_window['password_entry_question'].set_text('')
         self.check_password_window['password_check_ok'].set_sensitive(False)
+        self.check_password_window['pass_err_img'].hide()
+        self.check_password_window['pass_err_labl'].hide()
         self.check_password_window['main_window'].show()
         return
 
