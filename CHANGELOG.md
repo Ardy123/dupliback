@@ -59,8 +59,11 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
 - Exporting a revision put absolute paths in the archive and left temporary
   directories behind.
 - Drive names from udev links were not shown.
-- The deb package now depends on `python3-dbus` and `gir1.2-gtk-3.0`, and its
-  version always matches the application version.
+- The packages now depend on everything the app uses: `python3-dbus`, the GTK
+  and GdkPixbuf typelibs, `udev` (drive detection), `mount` and `xdg-utils`
+  (opening exports); the RPM requires the commands by path. The deb's
+  section, priority and homepage are corrected, and its version always
+  matches the application version.
 
 ## [0.4.0] - 2023-02-09
 

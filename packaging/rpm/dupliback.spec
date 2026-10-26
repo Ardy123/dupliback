@@ -11,7 +11,10 @@ License:        GPL-2.0-only
 URL:            https://github.com/Ardy123/dupliback
 Packager:       QVXLabs LLC <afalls@qvxlabs.com>
 BuildArch:      noarch
-Requires:       python3, python3-gobject, python3-dbus, gtk3, duplicity
+Requires:       python3, python3-gobject, python3-dbus, gtk3, gdk-pixbuf2
+Requires:       duplicity
+# commands the app runs, by path since the owning package varies by release
+Requires:       /usr/bin/udevadm, /usr/bin/mount, /usr/bin/xdg-open
 
 %description
 dupli.back Backup software for Linux, originally based on 'flyback', which was
