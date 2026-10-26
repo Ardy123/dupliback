@@ -231,6 +231,7 @@ class GuiEnv(object):
         self.opened_files = []
         self.takedowns = []
         self.chosen_folder = None
+        self.popups = []
         self.guis = set()
 
     def register(self, gui):
@@ -260,7 +261,13 @@ def gui_env(monkeypatch):
     monkeypatch.setattr(Gtk.Dialog, 'run', run_dialog)
     monkeypatch.setattr(Gtk.FileChooserDialog, 'get_filename',
                         lambda self: env.chosen_folder)
-    monkeypatch.setattr(Gtk.Menu, 'popup', lambda self, *args: None)
+    real_popup = Gtk.Menu.popup_at_pointer
+    def popup(menu, event):
+        # the real call with no trigger event checks the api; then closed
+        env.popups.append(menu)
+        real_popup(menu, None)
+        menu.popdown()
+    monkeypatch.setattr(Gtk.Menu, 'popup_at_pointer', popup)
     monkeypatch.setattr(util, 'open_file', env.opened_files.append)
     takedown = backup_progress_gui.GUI.takedownProgressBar
     def record_takedown(self):

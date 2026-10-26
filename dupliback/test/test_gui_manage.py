@@ -120,6 +120,20 @@ def test_restore_whole_revision_from_context_menu(manage, gui_env):
     assert os.path.isfile(target)
 
 
+def test_moment_context_menu_restores(manage, gui_env):
+    select_first_revision(manage, gui_env)
+    target = os.path.join(manage.path, 'small.bin')
+    os.remove(target)
+    revisions = manage.gtkbuilder.get_object('treeview_revisions')
+    assert manage.revview_mouse_notify(revisions, FakeEvent(3))
+    menu, = gui_env.popups
+    item, = menu.get_children()
+    assert item.get_label() == 'Restore Moment(revision)'
+    item.activate()
+    gui_env.wait_for_takedowns(2)
+    assert os.path.isfile(target)
+
+
 def test_file_context_menu_needs_a_selection(manage, gui_env):
     select_first_revision(manage, gui_env)
     treeview = manage.gtkbuilder.get_object('treeview_files')
