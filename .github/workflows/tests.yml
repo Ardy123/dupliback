@@ -14,14 +14,25 @@ jobs:
   tests:
     name: tests
     runs-on: ubuntu-24.04
+    # the supported base, so the tests use its duplicity (3.0.6)
+    container: ubuntu:26.04
+    env:
+      DEBIAN_FRONTEND: noninteractive
     steps:
-      - uses: actions/checkout@v4
-
+      # before checkout, which needs git to clone with history
       - name: Install system packages
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-venv python3-gi python3-dbus \
-            gir1.2-gtk-3.0 duplicity xvfb
+          apt-get update
+          apt-get install -y git python3-venv python3-gi python3-dbus \
+            gir1.2-gtk-3.0 duplicity udev xvfb
+
+      - uses: actions/checkout@v4
+
+      - name: Trust the checkout and show duplicity's version
+        # the container runs as root, the checkout is owned by the runner
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          duplicity --version
 
       - name: Create .venv
         run: dupliback/setup_venv.sh
@@ -66,9 +77,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: ubuntu:24.04
+          # duplicity >= 3.0.6: Ubuntu 26.04 (3.0.6), Debian unstable (3.1);
+          # Ubuntu 24.04 (2.1) and Debian 13 (3.0.4) are too old
+          - image: ubuntu:26.04
             install: apt-get update && apt-get install -y ./dupli.back-*.deb
-          - image: debian:stable
+          - image: debian:unstable
             install: apt-get update && apt-get install -y ./dupli.back-*.deb
           - image: fedora:latest
             install: dnf install -y ./dupli.back-*.noarch.rpm

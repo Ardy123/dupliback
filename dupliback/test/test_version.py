@@ -82,6 +82,22 @@ def test_package_metadata_does_not_hardcode_version():
                                                    'glade', 'about.glade')
 
 
+def test_minimum_duplicity_is_set_once():
+    minimum = settings.MIN_DUPLICITY_VERSION
+    assert re.fullmatch(r'\d+\.\d+\.\d+', minimum)
+    printed = subprocess.run(
+        [sys.executable, os.path.join(SRC_DIR, 'settings.py'),
+         '--min-duplicity'], stdout=subprocess.PIPE,
+        universal_newlines=True, check=True).stdout.strip()
+    assert printed == minimum
+    # the build scripts fill these in; requirements.txt has to repeat it
+    assert 'duplicity (>= @DUPLICITY_VERSION@)' in read('packaging', 'deb',
+                                                        'control')
+    assert 'duplicity >= %{duplicity_version}' in read('packaging', 'rpm',
+                                                       'dupliback.spec')
+    assert 'duplicity>=%s' % minimum in read('dupliback', 'requirements.txt')
+
+
 @requires_display
 def test_about_dialog_shows_version():
     import about_gui

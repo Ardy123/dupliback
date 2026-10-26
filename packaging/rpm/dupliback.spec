@@ -1,5 +1,6 @@
 # Built by build_rpm.sh, which stages the application files in the rpmbuild
-# SOURCES directory and defines pkg_version from dupliback/src/settings.py.
+# SOURCES directory and defines pkg_version and duplicity_version from
+# dupliback/src/settings.py.
 %global __brp_python_bytecompile %{nil}
 %global _python_bytecompile_extra 0
 
@@ -12,7 +13,7 @@ URL:            https://github.com/Ardy123/dupliback
 Packager:       QVXLabs LLC <afalls@qvxlabs.com>
 BuildArch:      noarch
 Requires:       python3, python3-gobject, python3-dbus, gtk3, gdk-pixbuf2
-Requires:       duplicity
+Requires:       duplicity >= %{duplicity_version}
 # Gtk-3.0's typelib needs xlib-2.0, which Fedora's gtk3 does not pull in
 Requires:       gobject-introspection
 # commands the app runs, by path since the owning package varies by release

@@ -40,6 +40,10 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   falls back to duplicity if the signatures can't be read.
 
 ### Changed
+- duplicity 3.0.6 or newer is required (what Kubuntu/Ubuntu 26.04 ships; also
+  Fedora 43+ and Debian unstable). The packages depend on it, and CI runs the
+  tests on Ubuntu 26.04. Backups made by older duplicity versions stay
+  readable.
 - Sources moved to `dupliback/src`.
 - The version is defined only in `dupliback/src/settings.py` instead of being
   repeated in the deb control file, the about dialog and the desktop files.
@@ -50,6 +54,8 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   "exclude cache" preference says.
 
 ### Fixed
+- Listing backups no longer fails on systems without `/dev/disk/by-uuid`
+  (containers, some virtual machines).
 - Moments are selected by their exact UTC time. The previous time strings had
   no time zone, so during summer time restore, export and explore resolved
   them an hour off.
