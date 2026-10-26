@@ -53,3 +53,40 @@ jobs:
           path: |
             dupli.back-*.deb
             dupli.back-*.rpm
+
+  install:
+    # installs each package into a bare image, so a dependency missing from
+    # control or the spec fails here rather than on a user's machine
+    name: install on ${{ matrix.image }}
+    needs: packages
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ubuntu:24.04
+            install: apt-get update && apt-get install -y ./dupli.back-*.deb
+          - image: debian:stable
+            install: apt-get update && apt-get install -y ./dupli.back-*.deb
+          - image: fedora:latest
+            install: dnf install -y ./dupli.back-*.noarch.rpm
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+
+      - name: Install the package and its dependencies
+        run: ${{ matrix.install }}
+
+      - name: Check the app starts and its commands exist
+        # the usage path imports every module, so this needs all the python
+        # and gtk dependencies
+        run: |
+          python3 /usr/share/dupliback/dupliback.py --usage \
+            | grep 'to backup all detected repositories'
+          for cmd in duplicity udevadm mount df tar xdg-open gpg; do
+            command -v "$cmd" || { echo "missing $cmd"; exit 1; }
+          done
