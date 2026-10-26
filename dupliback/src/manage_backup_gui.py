@@ -76,12 +76,10 @@ class GUI(object):
         for n, rev in enumerate(revisions):
             date = "%s %s/%s/%s %s" % (rev['day'],rev['month'],rev['dayOfMo'],
                                        rev['year'], rev['time'])
-            isoTime = "%s-%02d-%02dT%s" % (rev['year'],rev['month'],
-                                           int(rev['dayOfMo']),rev['time'])
             s = '[%s] %s\n<i>%s</i>' % ( 'epoch' if n == 0 else 'moment',
                                          util.pango_escape(date),
                                          util.pango_escape(rev['type']) )
-            treeview_revisions_model.append((s,isoTime))
+            treeview_revisions_model.append((s, backup.revision_id(rev)))
 
     def update_files(self, treeview_revisions=None):
         treeview_files_view = self.gtkbuilder.get_object('treeview_files')
@@ -103,7 +101,7 @@ class GUI(object):
         tree = FileTreeBuilder(Gtk.TreeStore( str, str ))
         self.run_task(Gtk.STOCK_FIND, 'loading files for rev: '+self.path,
                       'Retrieving File List, Please Wait',
-                      lambda: backup.get_files_for_revision(
+                      lambda: backup.list_files(
                           self.uuid, self.host, self.path, rev, self.password,
                           tree.add),
                       lambda result: treeview_files_view.set_model(tree.model))

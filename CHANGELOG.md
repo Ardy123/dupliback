@@ -33,6 +33,11 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   the password of protected backups from `$PASSPHRASE` or prompts for it.
 - Unreleased builds show their version as `X.Y.Z-<short commit>`; `build_deb.sh`
   and `build_rpm.sh` take `-r` to build a release.
+- Listing a moment's files reads the signature files directly instead of
+  running `duplicity list-current-files`: about 5 minutes instead of about an
+  hour on a 14-year, 67-moment backup, and instant when the same moment is
+  viewed again. It works without duplicity's cache (e.g. on a new machine) and
+  falls back to duplicity if the signatures can't be read.
 
 ### Changed
 - Sources moved to `dupliback/src`.
@@ -41,8 +46,13 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
 - About dialog copyright updated to 2026.
 - Drive change notifications are handled on the GTK main loop instead of a second
   main loop on its own thread.
+- Duplicity's cache and the app's own cache are never backed up, whatever the
+  "exclude cache" preference says.
 
 ### Fixed
+- Moments are selected by their exact UTC time. The previous time strings had
+  no time zone, so during summer time restore, export and explore resolved
+  them an hour off.
 - Exclusion categories were always applied, even when switched off, and empty
   custom filters added an empty exclusion.
 - The "exclude files over N GB" option could not be set (its spin button had no
