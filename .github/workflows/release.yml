@@ -25,7 +25,9 @@ jobs:
           TAG: ${{ github.event.release.tag_name }}
           DUPLIBACK_RELEASE: 1
         run: |
-          version="$(python3 dupliback/src/settings.py)"
+          source packaging/build_common.sh
+          set_versions
+          version="$VERSION"
           if [ "${TAG#v}" != "$version" ]; then
             echo "::error::release tag $TAG does not match version $version in dupliback/src/settings.py"
             exit 1

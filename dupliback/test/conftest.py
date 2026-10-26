@@ -1,5 +1,9 @@
+import hashlib
 import os
+import pickle
+import re
 import sys
+import time
 
 import pytest
 
@@ -9,10 +13,43 @@ sys.path.insert(0, SRC_DIR)
 import backup
 import util
 
+PRODUCTION_HASH_ITERATIONS = backup.PASSWORD_HASH_ITERATIONS
+
 
 @pytest.fixture(autouse=True)
 def no_error_dialogs(monkeypatch):
     monkeypatch.setattr(backup, 'SHOW_ERROR_DIALOGS', False)
+
+
+@pytest.fixture(autouse=True)
+def fast_password_hashing(monkeypatch):
+    # the iteration count is stored in each hash, so checking still works; it is
+    # only lowered to keep the many password protected test backups fast
+    monkeypatch.setattr(backup, 'PASSWORD_HASH_ITERATIONS', 1000)
+
+
+def write(path, content):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+        f.write(content)
+
+
+def read(path):
+    with open(path) as f:
+        return f.read()
+
+
+def write_legacy_hash(repo, password):
+    # stores the password as an unsalted md5 hash, as backups made before 0.5.0 did
+    properties = backup.get_properties(*repo.args)
+    properties['password'] = hashlib.md5(password.encode('utf-8')).hexdigest()
+    with open(os.path.join(backup.get_backupPath(*repo.args), backup.PROPERTIES_FILE), 'wb') as f:
+        pickle.dump(properties, f)
+    return properties['password']
+
+
+def stored_hash(repo):
+    return backup.get_properties(*repo.args)['password']
 
 
 @pytest.fixture
@@ -50,6 +87,17 @@ def repo(fake_drive, source_dir):
     return Repo('TEST-UUID', backup.get_hostname(), source_dir)
 
 
+@pytest.fixture
+def protected(repo):
+    # a password protected repo with one backup, needs duplicity
+    write(os.path.join(repo.path, 'my docs', 'file with spaces.txt'), 'v1')
+    write(os.path.join(repo.path, 'small.bin'), 'x')
+    pin_dir_mtimes(repo.path)
+    assert backup.init_backup(*repo.args, 'pw')
+    assert backup.backup(*repo.args, 'pw') == 0
+    return repo
+
+
 # duplicity decides what changed by comparing mtimes to the second, so a file or
 # directory touched in the same second as a backup may or may not count as
 # changed. Tests that check change counts pin mtimes to make them exact.
@@ -68,7 +116,6 @@ def mark_modified(path):
 
 def status_count(label, text):
     # 'New Files: 2 - Size of New Files: 141 Bytes' -> 2
-    import re
     match = re.match(r'%s: (\d+)' % label, text)
     assert match, '%r does not start with %r' % (text, label)
     return int(match.group(1))
@@ -98,7 +145,6 @@ def run_in_main_loop(func):
 
 def wait_until(predicate, timeout=60):
     # pumps gtk events until predicate() is true, so worker threads can hand results back
-    import time
     from gi.repository import Gtk
     deadline = time.monotonic() + timeout
     while not predicate():

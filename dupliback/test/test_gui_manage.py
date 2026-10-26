@@ -5,7 +5,7 @@ import shutil
 import pytest
 
 import backup
-from conftest import pin_dir_mtimes, status_count, wait_until
+from conftest import pin_dir_mtimes, read, status_count, wait_until, write
 
 pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None, reason='duplicity is not installed')
 
@@ -16,26 +16,23 @@ class FakeEvent(object):
         self.time = 0
 
 
-def write(path, content):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'w') as f:
-        f.write(content)
-
-
-def read(path):
-    with open(path) as f:
-        return f.read()
+def open_manage_window(repo, gui_env):
+    import manage_backup_gui
+    return manage_backup_gui.GUI(gui_env.register, gui_env.unregister, *repo.args, 'pw')
 
 
 @pytest.fixture
-def manage(repo, gui_env):
-    import manage_backup_gui
-    write(os.path.join(repo.path, 'my docs', 'file with spaces.txt'), 'v1')
-    write(os.path.join(repo.path, 'small.bin'), 'x')
-    pin_dir_mtimes(repo.path)
+def manage(protected, gui_env):
+    gui = open_manage_window(protected, gui_env)
+    yield gui
+    gui.close()
+
+
+@pytest.fixture
+def empty_manage(repo, gui_env):
+    # the window for a backup without revisions, for tests that do not need any
     backup.init_backup(*repo.args, 'pw')
-    backup.backup(*repo.args, 'pw')
-    gui = manage_backup_gui.GUI(gui_env.register, gui_env.unregister, *repo.args, 'pw')
+    gui = open_manage_window(repo, gui_env)
     yield gui
     gui.close()
 
@@ -128,7 +125,6 @@ def test_restore_button_without_file_selection_restores_everything(manage, gui_e
 
 
 def test_export_writes_tarball_and_opens_it(manage, gui_env, tmp_path):
-    from gi.repository import Gtk
     select_first_revision(manage, gui_env)
     gui_env.chosen_folder = str(tmp_path)
     manage.start_export()
@@ -169,7 +165,8 @@ def test_status_opens_status_window(manage, gui_env):
     assert not gui_env.find(backup_status_gui.GUI)
 
 
-def test_preferences_and_about(manage, gui_env):
+def test_preferences_and_about(empty_manage, gui_env):
+    manage = empty_manage
     import about_gui
     import manage_backup_preferences_gui
     manage.open_preferences()
@@ -180,9 +177,9 @@ def test_preferences_and_about(manage, gui_env):
     about.closedButton(about.main_window, 0)
 
 
-def test_running_task_timer_updates_elapsed_time(manage, gui_env):
+def test_running_task_timer_updates_elapsed_time(empty_manage, gui_env):
     import datetime
-    tasks = manage.gtkbuilder.get_object('running_tasks').get_model()
+    tasks = empty_manage.gtkbuilder.get_object('running_tasks').get_model()
     tasks.append((None, 'pretend task', datetime.datetime.now() - datetime.timedelta(seconds=90), ''))
     wait_until(lambda: tasks[0][3] != '', timeout=10)
     assert tasks[0][3].startswith('1m')

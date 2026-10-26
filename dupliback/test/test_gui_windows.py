@@ -9,7 +9,7 @@ import backup
 @pytest.fixture
 def recorded_windows(monkeypatch):
     # replaces windows opened from other windows with recorders
-    import create_backup_gui, manage_backup_gui, select_backup_gui
+    import create_backup_gui, select_backup_gui
     class Opened(list):
         pass
     opened = Opened()
@@ -48,7 +48,7 @@ def select_row(gui, n):
 
 
 def properties(repo):
-    return dict(backup.get_properties(*repo.args), password=backup.get_properties(*repo.args).get('password', ''))
+    return backup.get_properties(*repo.args)
 
 
 # --- select backup window
@@ -66,9 +66,8 @@ def test_select_lists_backup_status_for_each_drive(known_drive, gui_env, monkeyp
     backup.init_backup(*known_drive.args, None)
     other_host = dict(properties(known_drive), host='another-computer')
     missing_drive = dict(properties(known_drive), uuid='MISSING')
-    present = backup.is_dev_present
     monkeypatch.setattr(backup, 'is_dev_present', lambda uuid: uuid != 'MISSING')
-    types = iter(['local', 'local', 'gvfs', 'gvfs', None, None])
+    types = iter(['local', 'gvfs', None])
     monkeypatch.setattr(backup, 'get_device_type', lambda uuid: next(types))
     gui = select_window(gui_env, [properties(known_drive), other_host, missing_drive], monkeypatch)
     texts = [row[1] for row in rows(gui)]
@@ -152,7 +151,7 @@ def test_create_without_writable_drives(gui_env, monkeypatch):
 
 
 def test_create_lists_drives_by_type(known_drive, gui_env, monkeypatch):
-    types = iter(['gvfs', 'gvfs', None, None, 'local', 'local'])
+    types = iter(['gvfs', None, 'local'])
     monkeypatch.setattr(backup, 'get_device_type', lambda uuid: next(types))
     gui = create_window(gui_env, monkeypatch, ['A', 'B', 'C'])
     assert len(rows(gui)) == 3 and all('Free Space:</b> 5.0GB' in row[1] for row in rows(gui))

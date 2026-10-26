@@ -8,20 +8,9 @@ import tarfile
 import pytest
 
 import backup
-from conftest import mark_modified, pin_dir_mtimes, status_count
+from conftest import mark_modified, pin_dir_mtimes, read, status_count, write
 
 pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None, reason='duplicity is not installed')
-
-
-def write(path, content):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'w') as f:
-        f.write(content)
-
-
-def read(path):
-    with open(path) as f:
-        return f.read()
 
 
 def volumes(repo):
@@ -37,16 +26,6 @@ def list_files(repo, rev, password):
     files = []
     backup.get_files_for_revision(*repo.args, rev, password, files.append)
     return [name for name, date in files]
-
-
-@pytest.fixture
-def protected(repo):
-    write(os.path.join(repo.path, 'my docs', 'file with spaces.txt'), 'v1')
-    write(os.path.join(repo.path, 'small.bin'), 'x')
-    pin_dir_mtimes(repo.path)
-    assert backup.init_backup(*repo.args, 'pw')
-    assert backup.backup(*repo.args, 'pw') == 0
-    return repo
 
 
 def test_init_backup_twice_reports_instead_of_exiting(protected):

@@ -6,16 +6,56 @@ import gi
 from dbus.mainloop.glib import DBusGMainLoop
 
 gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
+import settings
 
 # glade/ and images/ live next to the modules, both in src/ and once installed
 RUN_FROM_DIR = os.path.abspath(os.path.dirname(__file__))
+DEVICE_ICONS = {'gvfs': Gtk.STOCK_NETWORK, 'local': Gtk.STOCK_HARDDISK}
 
 def pango_escape(message):
     assert isinstance(message, str)
-    message = "&amp;".join(message.split("&"))
-    message = "&lt;".join(message.split("<"))
-    message = "&gt;".join(message.split(">"))
-    return message
+    return message.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+
+def load_glade(name):
+    builder = Gtk.Builder()
+    builder.add_from_file(os.path.join(RUN_FROM_DIR, 'glade', name))
+    return builder
+
+
+def setup_window(window, title):
+    # the hard disk icon and "dupli.back v<version> - <title>" shared by the main windows
+    window.set_icon(window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON))
+    window.set_title('%s v%s - %s' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION, title))
+
+
+def add_icon_column(treeview, column=0):
+    renderer = Gtk.CellRendererPixbuf()
+    renderer.set_property('xpad', 4)
+    renderer.set_property('ypad', 4)
+    treeview.append_column(Gtk.TreeViewColumn('', renderer, pixbuf=column))
+
+
+def add_markup_column(treeview, column, title='', pad=None):
+    renderer = Gtk.CellRendererText()
+    if pad:
+        renderer.set_property('xpad', pad)
+        renderer.set_property('ypad', pad)
+    treeview.append_column(Gtk.TreeViewColumn(title, renderer, markup=column))
+
+
+def device_icon(window, device_type):
+    return window.render_icon(DEVICE_ICONS.get(device_type, Gtk.STOCK_DIALOG_QUESTION), Gtk.IconSize.DIALOG)
+
+
+def message_dialog(message_type, buttons, text, secondary_markup):
+    # runs a modal message dialog and returns the response
+    dialog = Gtk.MessageDialog(None, Gtk.DialogFlags.DESTROY_WITH_PARENT, message_type, buttons, text)
+    dialog.format_secondary_markup(secondary_markup)
+    response = dialog.run()
+    dialog.destroy()
+    return response
 
 
 def open_file(fn):

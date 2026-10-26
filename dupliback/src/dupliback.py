@@ -48,7 +48,7 @@ def launch_select_backup_gui():
 
 if __name__=='__main__':
   args = sys.argv[1:]
-  if len(args):
+  if args:
     print()
     print("------------------------------------------")
     print(" dupliBack - Backup for Linux")
