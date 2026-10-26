@@ -116,12 +116,14 @@ class GUI(object):
         if not selection[1]:
             return False
         menu = Gtk.Menu()
+        # keeps the menu alive while it is shown, and places it over widget
+        menu.attach_to_widget(widget, None)
         restoreSelection = Gtk.MenuItem(label)
         restoreSelection.connect("activate", self.restore_selection,
                                  selection if restore_selected_rows else None)
         menu.append( restoreSelection )
         restoreSelection.show()
-        menu.popup( None, None, None, event.button, event.time )
+        menu.popup_at_pointer(event)
         return True
 
     def fileview_mouse_notify(self, widget, event):

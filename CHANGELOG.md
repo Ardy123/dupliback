@@ -54,6 +54,8 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   "exclude cache" preference says.
 
 ### Fixed
+- Right-clicking a moment or a file crashed instead of showing the restore
+  menu (a GTK 3 port leftover).
 - Listing backups no longer fails on systems without `/dev/disk/by-uuid`
   (containers, some virtual machines).
 - Moments are selected by their exact UTC time. The previous time strings had
