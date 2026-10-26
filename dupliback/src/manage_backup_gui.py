@@ -115,32 +115,43 @@ class GUI(object):
                           tree.add),
                       lambda result: treeview_files_view.set_model(tree.model))
 
-    def restore_selection(self, widget, selection=None ):
-        self.start_restore(selection)
+    def popup_menu(self, widget, event, items):
+        # a menu of (label, callback) items; attaching it to widget keeps it
+        # alive while shown and places it over widget
+        menu = Gtk.Menu()
+        menu.attach_to_widget(widget, None)
+        for label, callback in items:
+            item = Gtk.MenuItem(label=label)
+            item.connect('activate', lambda item, callback=callback: callback())
+            menu.append(item)
+            item.show()
+        menu.popup_at_pointer(event)
 
-    def popup_restore_menu(self, widget, event, label, restore_selected_rows):
+    def fileview_mouse_notify(self, widget, event):
         if event.button != 3:
             return False
         selection = widget.get_selection().get_selected_rows()
         if not selection[1]:
             return False
-        menu = Gtk.Menu()
-        # keeps the menu alive while it is shown, and places it over widget
-        menu.attach_to_widget(widget, None)
-        restoreSelection = Gtk.MenuItem(label)
-        restoreSelection.connect("activate", self.restore_selection,
-                                 selection if restore_selected_rows else None)
-        menu.append( restoreSelection )
-        restoreSelection.show()
-        menu.popup_at_pointer(event)
+        self.popup_menu(widget, event, [
+            ('Restore Selection', lambda: self.start_restore(selection))])
         return True
 
-    def fileview_mouse_notify(self, widget, event):
-        return self.popup_restore_menu(widget, event, "Restore Selection", True)
-
     def revview_mouse_notify(self, widget, event):
-        return self.popup_restore_menu(widget, event,
-                                       "Restore Moment(revision)", False)
+        # a right-click only opens the moment's menu; selecting the moment
+        # would start listing its files
+        if event.button != 3:
+            return False
+        hit = widget.get_path_at_pos(int(event.x), int(event.y))
+        if hit:
+            rev = widget.get_model()[hit[0]][1]
+            self.popup_menu(widget, event, [
+                ('Restore Moment', lambda: self.start_restore(rev=rev)),
+                ('Prune Moment', lambda: self.prune_moment(rev))])
+        return True
+
+    def prune_moment(self, rev):
+        prune_gui.RewriteFlow(self).prune([int(rev)])
 
     def get_selected_revision(self):
         model, entry = self.gtkbuilder.get_object(
@@ -172,8 +183,9 @@ class GUI(object):
                       'Backing Up, Please Wait', work, self.show_revisions,
                       after=show_notices)
 
-    def start_restore(self, selection=None ):
-        rev = self.get_selected_revision()
+    def start_restore(self, selection=None, rev=None):
+        # restores rev, or the selected moment, whole or just selection
+        rev = rev or self.get_selected_revision()
         def work():
             if selection is None:
                 backup.restore_to_revision( self.uuid, self.host, self.path,

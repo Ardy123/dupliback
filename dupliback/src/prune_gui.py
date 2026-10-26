@@ -99,6 +99,24 @@ class GUI(object):
     def start(self, plan):
         thorough = self.gtkbuilder.get_object('check_thorough').get_active()
         self.close()
+        RewriteFlow(self.manage).start(plan, thorough)
+
+class RewriteFlow(object):
+    # estimate, confirm, rebuild and apply a prune or squash for the manage
+    # window, from the Prune screen or a moment's right-click menu
+    def __init__(self, manage):
+        self.manage = manage
+        self.duplicity_dir = backup.get_backupPath(manage.uuid, manage.host,
+                                                   manage.path)
+
+    def prune(self, epochs):
+        try:
+            plan = merge.plan_prune(self.duplicity_dir, epochs)
+        except merge.MergeError as e:
+            return _show_error(str(e))
+        self.start(plan)
+
+    def start(self, plan, thorough=True):
         self.manage.run_task(
             Gtk.STOCK_FIND, 'estimating the space freed',
             'Estimating, Please Wait',

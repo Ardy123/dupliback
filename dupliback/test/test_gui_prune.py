@@ -185,3 +185,37 @@ def test_postponed_full_backup_is_explained(manage, gui_env, monkeypatch):
     gui.start_backup()
     gui_env.wait_for_takedowns(1, timeout=120)
     assert shown == ['Full backup postponed']
+
+
+def test_prune_moment_from_the_right_click_menu(manage, gui_env):
+    from gi.repository import Gtk
+    from test_gui_manage import click_on_row
+    gui, epochs = manage
+    treeview = gui.gtkbuilder.get_object('treeview_revisions')
+    gui.revview_mouse_notify(treeview, click_on_row(treeview, 1))
+    menu, = gui_env.popups
+    prune_item = menu.get_children()[1]
+    assert prune_item.get_label() == 'Prune Moment'
+    gui_env.dialog_response = Gtk.ResponseType.YES
+    prune_item.activate()
+    # estimate, rebuild, apply
+    gui_env.wait_for_takedowns(3, timeout=300)
+    assert [rev['epoch'] for rev in backup.get_revisions(gui.uuid, gui.host,
+                                                         gui.path)] == [
+        epochs[0]] + epochs[2:]
+    assert revisions(gui) == 3
+
+
+def test_pruning_the_only_moment_is_refused(repo, gui_env, monkeypatch):
+    import manage_backup_gui
+    import util
+    build_moments(repo, 'pw', [edit(0)])
+    shown = []
+    monkeypatch.setattr(util, 'message_dialog',
+                        lambda *args: shown.append(args[2]))
+    gui = manage_backup_gui.GUI(gui_env.register, gui_env.unregister,
+                                *repo.args, 'pw')
+    rev = gui.gtkbuilder.get_object('treeview_revisions').get_model()[0][1]
+    gui.prune_moment(rev)
+    assert shown == ['Prune or merge stopped']
+    gui.close()

@@ -65,7 +65,9 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   no time zone, so during summer time restore, export and explore resolved
   them an hour off.
 - Right-clicking a moment or a file crashed instead of showing the restore
-  menu (a GTK 3 port leftover).
+  menu (a GTK 3 port leftover). Right-clicking a moment now only opens its
+  menu, **Restore Moment** or **Prune Moment**, instead of also selecting it
+  and listing its files.
 - Exclusion categories were always applied, even when switched off, and empty
   custom filters added an empty exclusion.
 - The "exclude files over N GB" option could not be set (its spin button had no
