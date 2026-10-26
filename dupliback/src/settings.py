@@ -1,10 +1,14 @@
 import os
 import subprocess
+import sys
 
 PROGRAM_NAME = 'dupli.back'
 # the only place the version is set. releases use it exactly; afterwards it
 # is bumped by hand to the next one.
 PROGRAM_BASE_VERSION = '0.5.0'
+# the oldest duplicity supported: what Kubuntu 26.04 ships. Packages depend on
+# it through the build scripts; requirements.txt repeats it (a test checks).
+MIN_DUPLICITY_VERSION = '3.0.6'
 PROGRAM_DEBUG = False
 
 
@@ -53,4 +57,6 @@ FILEEXT_EXCLUDE_MAP = {
 }
 
 if __name__=='__main__':
-    print(PROGRAM_VERSION)
+    # the build scripts read both versions from here
+    print(MIN_DUPLICITY_VERSION if sys.argv[1:] == ['--min-duplicity']
+          else PROGRAM_VERSION)

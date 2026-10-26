@@ -1,9 +1,11 @@
 # Runtime. These need system libraries to build, so setup_venv.sh creates the
 # venv with --system-site-packages and the distro packages (python3-gi,
-# python3-dbus) satisfy them. duplicity itself is used through its command line
-# and should come from the distro package as well.
+# python3-dbus) satisfy them. duplicity is used through its command line and
+# comes from the distro package as well; its minimum is MIN_DUPLICITY_VERSION
+# in src/settings.py.
 PyGObject>=3.36
 dbus-python>=1.2.16
+duplicity>=3.0.6
 
 # Tests
 pytest>=6.0

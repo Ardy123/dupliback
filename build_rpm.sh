@@ -18,7 +18,9 @@ build_package() {
     cp packaging/dupliback.desktop COPYING rpmbuild/SOURCES/
     # build package
     rpmbuild --define "_topdir $PWD/rpmbuild" \
-        --define "pkg_version ${PKG_VERSION}" -bb packaging/rpm/dupliback.spec
+        --define "pkg_version ${PKG_VERSION}" \
+        --define "duplicity_version ${DUPLICITY_VERSION}" \
+        -bb packaging/rpm/dupliback.spec
     mv rpmbuild/RPMS/noarch/dupli.back-${PKG_VERSION}-1.noarch.rpm \
         dupli.back-${VERSION}.noarch.rpm
     set +e
