@@ -50,6 +50,22 @@ def repo(fake_drive, source_dir):
     return Repo('TEST-UUID', backup.get_hostname(), source_dir)
 
 
+# duplicity decides what changed by comparing mtimes to the second, so a file or
+# directory touched in the same second as a backup may or may not count as
+# changed. Tests that check change counts pin mtimes to make them exact.
+PINNED_MTIME = 1600000000
+
+
+def pin_dir_mtimes(root):
+    for dirpath, dirnames, filenames in os.walk(root):
+        os.utime(dirpath, (PINNED_MTIME, PINNED_MTIME))
+
+
+def mark_modified(path):
+    # a later mtime than the pinned backup, so duplicity always sees the change
+    os.utime(path, (PINNED_MTIME + 60, PINNED_MTIME + 60))
+
+
 def status_count(label, text):
     # 'New Files: 2 - Size of New Files: 141 Bytes' -> 2
     import re

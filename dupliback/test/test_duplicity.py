@@ -8,7 +8,7 @@ import tarfile
 import pytest
 
 import backup
-from conftest import status_count
+from conftest import mark_modified, pin_dir_mtimes, status_count
 
 pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None, reason='duplicity is not installed')
 
@@ -43,6 +43,7 @@ def list_files(repo, rev, password):
 def protected(repo):
     write(os.path.join(repo.path, 'my docs', 'file with spaces.txt'), 'v1')
     write(os.path.join(repo.path, 'small.bin'), 'x')
+    pin_dir_mtimes(repo.path)
     assert backup.init_backup(*repo.args, 'pw')
     assert backup.backup(*repo.args, 'pw') == 0
     return repo
@@ -83,13 +84,14 @@ def test_listing_keeps_paths_with_spaces(protected):
 
 def test_status_reports_changes_with_correct_labels(protected):
     write(os.path.join(protected.path, 'new.txt'), 'n')
-    write(os.path.join(protected.path, 'my docs', 'file with spaces.txt'), 'v2')
+    modified_file = os.path.join(protected.path, 'my docs', 'file with spaces.txt')
+    write(modified_file, 'v2')
+    mark_modified(modified_file)
     os.remove(os.path.join(protected.path, 'small.bin'))
+    pin_dir_mtimes(protected.path)
     added, modified, deleted = backup.get_status(*protected.args, 'pw')
-    # duplicity may also count changed directories, depending on whether their
-    # mtime moved to a later second than the backup, so only check lower bounds
-    assert status_count('New Files', added) >= 1
-    assert status_count('Modified Files', modified) >= 1
+    assert status_count('New Files', added) == 1
+    assert status_count('Modified Files', modified) == 1
     assert status_count('Deleted Files', deleted) == 1
 
 

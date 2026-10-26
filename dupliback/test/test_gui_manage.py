@@ -5,7 +5,7 @@ import shutil
 import pytest
 
 import backup
-from conftest import status_count, wait_until
+from conftest import pin_dir_mtimes, status_count, wait_until
 
 pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None, reason='duplicity is not installed')
 
@@ -32,6 +32,7 @@ def manage(repo, gui_env):
     import manage_backup_gui
     write(os.path.join(repo.path, 'my docs', 'file with spaces.txt'), 'v1')
     write(os.path.join(repo.path, 'small.bin'), 'x')
+    pin_dir_mtimes(repo.path)
     backup.init_backup(*repo.args, 'pw')
     backup.backup(*repo.args, 'pw')
     gui = manage_backup_gui.GUI(gui_env.register, gui_env.unregister, *repo.args, 'pw')
@@ -157,13 +158,13 @@ def test_explore_opens_restored_folder(manage, gui_env):
 def test_status_opens_status_window(manage, gui_env):
     import backup_status_gui
     write(os.path.join(manage.path, 'new.txt'), 'n')
+    pin_dir_mtimes(manage.path)
     manage.start_status()
     gui_env.wait_for_takedowns(1)
     status, = gui_env.find(backup_status_gui.GUI)
     rows = [row[1] for row in status.gtkbuilder.get_object('treeview_filelist').get_model()]
-    assert status_count('New Files', rows[0]) >= 1
-    assert status_count('Modified Files', rows[1]) >= 0
-    assert status_count('Deleted Files', rows[2]) == 0
+    assert [status_count('New Files', rows[0]), status_count('Modified Files', rows[1]),
+            status_count('Deleted Files', rows[2])] == [1, 0, 0]
     status.close()
     assert not gui_env.find(backup_status_gui.GUI)
 
