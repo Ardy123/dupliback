@@ -31,7 +31,9 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   original before anything on the drive changes; the change is journaled, so
   an interruption can be finished or undone the next time the backup is
   opened, and backups are blocked until then. This frees space and shortens
-  the history every listing and backup has to replay.
+  the history every listing and backup has to replay. When the moments hold
+  other users' files, only the rebuild runs as root, through `pkexec`; it
+  uses the user's caches and hands back everything it creates.
 - A new full backup is made when the last one is over a year old, unless the
   drive may not have room for it; then an incremental backup is made and the
   user is told to prune or merge old moments.

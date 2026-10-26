@@ -128,12 +128,8 @@ class RewriteFlow(object):
         status, estimate = result
         if status == 'error':
             return _show_error(estimate)
-        if estimate['foreign_owned']:
-            return _show_error(
-                '%d files in %s belong to another user. Rebuilding moments '
-                'restores them without root, which would lose their '
-                'permissions, so this backup cannot be changed.'
-                % (estimate['foreign_owned'], self.manage.path))
+        # other users' files can only be restored with their owners by root
+        as_admin = bool(estimate['foreign_owned']) and os.geteuid() != 0
         if estimate['staging_needed'] > estimate['staging_free']:
             return _show_error(
                 'Rebuilding needs about %s free in %s; only %s is free.' % (
@@ -148,14 +144,25 @@ class RewriteFlow(object):
                    util.humanize_bytes(estimate['max_freed']),
                    len(estimate['regenerated']), estimate['hours'],
                    util.humanize_bytes(estimate['staging_needed'])))
+        if as_admin and estimate['regenerated']:
+            text += ('\n\n%d files belong to other users, so rebuilding runs '
+                     'with administrator rights and will ask for the '
+                     'administrator password. Everything dupli.back creates '
+                     'stays yours.' % estimate['foreign_owned'])
         if Gtk.ResponseType.YES != util.message_dialog(
                 Gtk.MessageType.WARNING, Gtk.ButtonsType.YES_NO,
                 'Prune or merge moments?', text):
             return
+        manage = self.manage
+        if as_admin and estimate['regenerated']:
+            prepare = lambda report: merge.prepare_as_admin(
+                plan, manage.password, report, thorough)
+        else:
+            prepare = lambda report: merge.prepare_rewrite(
+                plan, manage.password, report, thorough)
         self.manage.run_task(
             Gtk.STOCK_FIND, 'rebuilding moments', 'Rebuilding, Please Wait',
-            _guarded(lambda report: merge.prepare_rewrite(
-                plan, self.manage.password, report, thorough)),
+            _guarded(prepare),
             after=lambda result: self.confirm_commit(plan, result),
             reports=True)
 

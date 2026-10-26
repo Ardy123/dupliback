@@ -4,6 +4,8 @@ import hashlib
 import os
 import shutil
 import stat
+import sys
+import types
 
 import pytest
 
@@ -412,3 +414,66 @@ def test_due_full_backup_that_does_not_fit_is_incremental(repo, monkeypatch):
     types = [rev['type'] for rev in backup.get_revisions(*repo.args)]
     assert types == ['Full', 'Incremental']
     assert messages and 'may not fit' in messages[0]
+
+
+# --- the administrator step, for moments with other users' files
+
+def test_hand_back_only_touches_the_apps_own_files(prepared, monkeypatch):
+    repo, epochs, before, d = prepared
+    handed = []
+    real_lstat = os.lstat
+    with monkeypatch.context() as patch:
+        # pretend root created everything
+        patch.setattr(merge.os, 'lstat', lambda path: types.SimpleNamespace(
+            st_uid=0, st_mode=real_lstat(path).st_mode))
+        patch.setattr(merge.os, 'lchown', lambda path, uid, gid: handed.append(
+            (path, uid, gid)))
+        merge.hand_back(d, 1234, 5678)
+    paths = [path for path, uid, gid in handed]
+    assert {(uid, gid) for path, uid, gid in handed} == {(1234, 5678)}
+    assert os.path.join(d, merge.JOURNAL_FILE) in paths
+    assert merge.staging_dir(d) in paths
+    assert backup.duplicity_cache_dir(d) in paths
+    # nothing of the backup itself, or of the source
+    assert not [p for p in paths if p.startswith(d + os.sep)
+                and not p.endswith(merge.JOURNAL_FILE)]
+    assert not [p for p in paths if p.startswith(repo.path)]
+
+
+@pytest.fixture
+def no_pkexec(monkeypatch):
+    # the helper runs as this user instead of through pkexec
+    monkeypatch.setattr(merge, 'ADMIN_COMMAND', [])
+
+
+def test_prepare_as_admin_runs_the_helper(chain, tmp_path, no_pkexec):
+    repo, epochs, before = chain
+    d = backup.get_backupPath(*repo.args)
+    progress = []
+    plan = merge.plan_squash(d, epochs[1:4])
+    journal = merge.prepare_as_admin(plan, 'pw', report=progress.append)
+    assert journal['phase'] == 'prepared'
+    assert any(text.startswith('Rebuilding') for text in progress)
+    merge.commit_rewrite(d, 'pw')
+    check_kept(repo, 'pw', before, tmp_path, [epochs[0]] + epochs[3:])
+
+
+def test_prepare_as_admin_reports_errors(chain, no_pkexec):
+    repo, epochs, before = chain
+    d = backup.get_backupPath(*repo.args)
+    files = drive_files(repo)
+    with pytest.raises(merge.MergeError) as error:
+        merge.prepare_as_admin(merge.plan_squash(d, epochs[1:3]), 'wrong')
+    assert 'restore failed' in str(error.value)
+    assert drive_files(repo) == files
+
+
+def test_refused_admin_rights(chain, monkeypatch):
+    repo, epochs, before = chain
+    d = backup.get_backupPath(*repo.args)
+    files = drive_files(repo)
+    monkeypatch.setattr(merge, 'ADMIN_COMMAND', [
+        sys.executable, '-c', 'import sys; sys.exit(126)'])
+    with pytest.raises(merge.MergeError, match='not granted'):
+        merge.prepare_as_admin(merge.plan_squash(d, epochs[1:3]), 'pw')
+    assert drive_files(repo) == files

@@ -109,22 +109,33 @@ def test_declining_the_second_confirmation_changes_nothing(manage, gui_env,
     assert revisions(gui) == 4
 
 
-def test_foreign_files_stop_before_anything_runs(manage, gui_env,
-                                                 monkeypatch):
+def test_other_users_files_use_administrator_rights(manage, gui_env,
+                                                    monkeypatch):
+    from gi.repository import Gtk
     import util
     gui, epochs = manage
-    shown = []
-    monkeypatch.setattr(util, 'message_dialog',
-                        lambda *args: shown.append(args[2]))
+    texts = []
+    def answer(message_type, buttons, title, text):
+        texts.append(text)
+        return Gtk.ResponseType.YES
+    monkeypatch.setattr(util, 'message_dialog', answer)
     real = merge.estimate_rewrite
     monkeypatch.setattr(merge, 'estimate_rewrite', lambda *args: dict(
         real(*args), foreign_owned=3))
+    # as a normal user, and with the helper run without pkexec
+    monkeypatch.setattr(merge.os, 'geteuid', lambda: 1000)
+    monkeypatch.setattr(merge, 'ADMIN_COMMAND', [])
+    used = []
+    real_admin = merge.prepare_as_admin
+    monkeypatch.setattr(merge, 'prepare_as_admin', lambda *args, **kwargs: (
+        used.append(1) or real_admin(*args, **kwargs)))
     screen = open_screen(gui, gui_env)
     pick(screen, 1)
     screen.prune()
-    gui_env.wait_for_takedowns(1, timeout=120)
-    assert shown == ['Prune or merge stopped']
-    assert revisions(gui) == 4
+    gui_env.wait_for_takedowns(3, timeout=300)
+    assert used == [1]
+    assert 'administrator password' in texts[0]
+    assert revisions(gui) == 3
 
 
 def test_low_space_asks_before_deleting_first(manage, gui_env, monkeypatch):

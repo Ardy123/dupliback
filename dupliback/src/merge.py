@@ -8,9 +8,11 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import time
 
 import backup
+import util
 
 JOURNAL_FILE = backup.REWRITE_JOURNAL
 TRASH_DIR = '.dupliback_trash'
@@ -19,6 +21,11 @@ SUPPORTED_DUPLICITY_MAJOR = 3
 # rough restore/verify speed from a USB drive through gpg and gunzip
 READ_BYTES_PER_HOUR = 60e6 * 3600
 SPACE_MARGIN = 1 << 30
+# runs the prepare step as root when other users' files are involved; tests
+# replace it
+ADMIN_COMMAND = ['pkexec']
+# pkexec's exit codes when the password prompt is dismissed or refused
+ADMIN_REFUSED = (126, 127)
 _T = r'\d{8}T\d{6}Z'
 NAME_RGX = re.compile(
     r'duplicity-(?:full\.(?P<full>{t})|inc\.(?P<start>{t})\.to\.(?P<end>{t})'
@@ -449,6 +456,59 @@ def prepare_rewrite(plan, password, report=lambda text: None, thorough=True):
     except BaseException:
         _roll_back_prepare(d, work)
         raise
+
+
+def hand_back(duplicity_dir, uid, gid):
+    # after the prepare step ran as root on a user's behalf: what it created in
+    # the app's own places goes back to that user. Never the restored source
+    # tree, which keeps its owners and is gone by now.
+    roots = [os.path.join(duplicity_dir, JOURNAL_FILE),
+             staging_dir(duplicity_dir),
+             backup.duplicity_cache_dir(duplicity_dir),
+             backup.listing_cache_dir(duplicity_dir)]
+    for root in filter(os.path.lexists, roots):
+        paths = [root] + [os.path.join(top, name)
+                          for top, dirs, files in os.walk(root)
+                          for name in dirs + files]
+        for path in paths:
+            if os.lstat(path).st_uid == 0:
+                os.lchown(path, uid, gid)
+
+
+def prepare_as_admin(plan, password, report=lambda text: None,
+                     thorough=True):
+    # prepare_rewrite as root through pkexec, for moments with other users'
+    # files, which only root can restore with their owners. The helper uses
+    # this user's caches and hands back what it creates; the password goes
+    # over a pipe, never on the command line.
+    helper = os.path.join(util.RUN_FROM_DIR, 'rewrite_helper.py')
+    command = ADMIN_COMMAND + [
+        sys.executable, helper, plan.duplicity_dir,
+        '--cache-home', backup.cache_home(),
+        '--owner', '%d:%d' % (os.getuid(), os.getgid()),
+        '--thorough' if thorough else '--quick'] + [
+        str(end) for end in sorted(plan.keep)]
+    error = None
+    with subprocess.Popen(command, stdin=subprocess.PIPE,
+                          stdout=subprocess.PIPE,
+                          universal_newlines=True) as helper_proc:
+        helper_proc.stdin.write((password or '') + '\n')
+        helper_proc.stdin.close()
+        for line in helper_proc.stdout:
+            kind, _, text = line.rstrip('\n').partition(': ')
+            if kind == 'progress':
+                report(text)
+            elif kind == 'error':
+                error = text
+    if helper_proc.returncode in ADMIN_REFUSED:
+        raise MergeError('administrator rights were not granted')
+    if error or helper_proc.returncode:
+        raise MergeError(error or 'the administrator step failed (exit %d)'
+                         % helper_proc.returncode)
+    journal = get_journal(plan.duplicity_dir)
+    if not journal or journal['phase'] != 'prepared':
+        raise MergeError('the administrator step did not prepare the change')
+    return journal
 
 
 def freed_bytes(plan, journal):

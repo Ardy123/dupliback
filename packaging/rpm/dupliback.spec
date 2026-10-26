@@ -17,6 +17,8 @@ Requires:       duplicity
 Requires:       gobject-introspection
 # commands the app runs, by path since the owning package varies by release
 Requires:       /usr/bin/udevadm, /usr/bin/mount, /usr/bin/xdg-open
+# rebuilding pruned moments that hold other users' files needs root
+Recommends:     /usr/bin/pkexec
 
 %description
 dupli.back Backup software for Linux, originally based on 'flyback', which was

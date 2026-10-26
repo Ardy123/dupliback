@@ -38,7 +38,11 @@ one, so a moment after a pruned one is rebuilt: dupli.back restores it into
 `$XDG_CACHE_HOME/dupliback/rewrite`, has duplicity re-diff it against its new
 predecessor, and verifies the result (and, by default, the original) before
 the drive is changed. On a large backup each rebuilt moment takes hours and
-needs about the size of the backed up files in temporary space.
+needs about the size of the backed up files in temporary space. If the
+moments hold files owned by other users, only root can restore them with
+their owners, so the rebuild alone runs through `pkexec` (you are asked for
+the administrator password); it uses your caches and everything dupli.back
+creates stays owned by you.
 
 A full backup is made automatically when the last one is over a year old, so
 histories stay short; if it might not fit on the drive, an incremental backup
