@@ -50,6 +50,14 @@ def repo(fake_drive, source_dir):
     return Repo('TEST-UUID', backup.get_hostname(), source_dir)
 
 
+def status_count(label, text):
+    # 'New Files: 2 - Size of New Files: 141 Bytes' -> 2
+    import re
+    match = re.match(r'%s: (\d+)' % label, text)
+    assert match, '%r does not start with %r' % (text, label)
+    return int(match.group(1))
+
+
 HAS_DISPLAY = bool(os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'))
 requires_display = pytest.mark.skipif(not HAS_DISPLAY, reason='needs a display')
 

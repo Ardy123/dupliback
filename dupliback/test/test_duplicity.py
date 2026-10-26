@@ -8,6 +8,7 @@ import tarfile
 import pytest
 
 import backup
+from conftest import status_count
 
 pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None, reason='duplicity is not installed')
 
@@ -83,11 +84,19 @@ def test_listing_keeps_paths_with_spaces(protected):
 def test_status_reports_changes_with_correct_labels(protected):
     write(os.path.join(protected.path, 'new.txt'), 'n')
     write(os.path.join(protected.path, 'my docs', 'file with spaces.txt'), 'v2')
+    os.remove(os.path.join(protected.path, 'small.bin'))
     added, modified, deleted = backup.get_status(*protected.args, 'pw')
-    # duplicity counts the changed root directory as well as new.txt
-    assert added.startswith('New Files: 2')
-    assert modified.startswith('Modified Files: 1')
-    assert deleted.startswith('Deleted Files: 0')
+    # duplicity may also count changed directories, depending on whether their
+    # mtime moved to a later second than the backup, so only check lower bounds
+    assert status_count('New Files', added) >= 1
+    assert status_count('Modified Files', modified) >= 1
+    assert status_count('Deleted Files', deleted) == 1
+
+
+def test_status_without_changes(protected):
+    added, modified, deleted = backup.get_status(*protected.args, 'pw')
+    assert [status_count('New Files', added), status_count('Modified Files', modified),
+            status_count('Deleted Files', deleted)] == [0, 0, 0]
 
 
 def test_restore_single_file_with_spaces(protected):

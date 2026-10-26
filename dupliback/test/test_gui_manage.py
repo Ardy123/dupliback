@@ -5,7 +5,7 @@ import shutil
 import pytest
 
 import backup
-from conftest import wait_until
+from conftest import status_count, wait_until
 
 pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None, reason='duplicity is not installed')
 
@@ -161,7 +161,9 @@ def test_status_opens_status_window(manage, gui_env):
     gui_env.wait_for_takedowns(1)
     status, = gui_env.find(backup_status_gui.GUI)
     rows = [row[1] for row in status.gtkbuilder.get_object('treeview_filelist').get_model()]
-    assert rows[0].startswith('New Files: 2') and rows[2].startswith('Deleted Files: 0')
+    assert status_count('New Files', rows[0]) >= 1
+    assert status_count('Modified Files', rows[1]) >= 0
+    assert status_count('Deleted Files', rows[2]) == 0
     status.close()
     assert not gui_env.find(backup_status_gui.GUI)
 
