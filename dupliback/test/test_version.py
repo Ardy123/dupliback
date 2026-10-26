@@ -17,12 +17,15 @@ def read(*path):
 
 
 def print_version(**env):
-    return subprocess.run([sys.executable, os.path.join(SRC_DIR, 'settings.py')], env=dict(os.environ, **env),
-                          stdout=subprocess.PIPE, universal_newlines=True, check=True).stdout.strip()
+    return subprocess.run(
+        [sys.executable, os.path.join(SRC_DIR, 'settings.py')],
+        env=dict(os.environ, **env), stdout=subprocess.PIPE,
+        universal_newlines=True, check=True).stdout.strip()
 
 
 def head_commit():
-    return subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=SRC_DIR, stdout=subprocess.PIPE,
+    return subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                          cwd=SRC_DIR, stdout=subprocess.PIPE,
                           universal_newlines=True, check=True).stdout.strip()
 
 
@@ -32,7 +35,8 @@ def test_base_version_is_semver():
 
 def test_unreleased_version_carries_the_commit(monkeypatch):
     monkeypatch.delenv('DUPLIBACK_RELEASE', raising=False)
-    assert settings.get_program_version() == '%s-%s' % (settings.PROGRAM_BASE_VERSION, head_commit())
+    assert settings.get_program_version() == '%s-%s' % (
+        settings.PROGRAM_BASE_VERSION, head_commit())
 
 
 def test_release_version_is_the_base_version(monkeypatch):
@@ -49,27 +53,33 @@ def test_without_git_the_base_version_is_used(monkeypatch):
 
 
 def test_installed_packages_use_the_version_they_were_built_as(monkeypatch):
-    monkeypatch.setitem(sys.modules, 'build_version', types.SimpleNamespace(PROGRAM_VERSION='9.9.9-abc1234'))
+    monkeypatch.setitem(sys.modules, 'build_version',
+                        types.SimpleNamespace(PROGRAM_VERSION='9.9.9-abc1234'))
     monkeypatch.setenv('DUPLIBACK_RELEASE', '1')
     assert settings.get_program_version() == '9.9.9-abc1234'
 
 
 def test_build_scripts_get_the_version_from_settings():
-    assert print_version(DUPLIBACK_RELEASE='') == '%s-%s' % (settings.PROGRAM_BASE_VERSION, head_commit())
-    assert print_version(DUPLIBACK_RELEASE='1') == settings.PROGRAM_BASE_VERSION
+    assert print_version(DUPLIBACK_RELEASE='') == '%s-%s' % (
+        settings.PROGRAM_BASE_VERSION, head_commit())
+    assert (print_version(DUPLIBACK_RELEASE='1')
+            == settings.PROGRAM_BASE_VERSION)
 
 
 def test_changelog_has_entry_for_the_version():
-    assert re.search(r'^## \[%s\] - (Unreleased|\d{4}-\d{2}-\d{2})$' % re.escape(settings.PROGRAM_BASE_VERSION),
+    assert re.search(r'^## \[%s\] - (Unreleased|\d{4}-\d{2}-\d{2})$'
+                     % re.escape(settings.PROGRAM_BASE_VERSION),
                      read('CHANGELOG.md'), re.MULTILINE)
 
 
 def test_package_metadata_does_not_hardcode_version():
     assert 'Version: @VERSION@' in read('packaging', 'deb', 'control')
-    assert 'Version:        %{pkg_version}' in read('packaging', 'rpm', 'dupliback.spec')
+    assert 'Version:        %{pkg_version}' in read('packaging', 'rpm',
+                                                    'dupliback.spec')
     # Version= in a desktop file is the desktop entry spec version, not ours
     assert 'Version=1.0' in read('packaging', 'dupliback.desktop')
-    assert '<property name="version">' not in read('dupliback', 'src', 'glade', 'about.glade')
+    assert '<property name="version">' not in read('dupliback', 'src',
+                                                   'glade', 'about.glade')
 
 
 @requires_display

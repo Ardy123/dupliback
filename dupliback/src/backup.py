@@ -10,7 +10,7 @@ import socket
 import re
 import threading
 import settings
-# not used directly, but it pins Gtk to 3.0 before the import below
+# unused, but pins Gtk to 3.0 before the import below
 import util
 from gi.repository import Gtk, GLib
 import subprocess
@@ -19,20 +19,24 @@ import error_dialog
 PROPERTIES_FILE = 'dupliback_properties.pickle'
 PREFERENCES_FILE = 'dupliback_preferences.pickle'
 PASSWORD_HASH_ITERATIONS = 100000
-# the command line interface turns this off since there is no gui to show errors in
+# the cli turns this off: it has no gui to show errors in
 SHOW_ERROR_DIALOGS = True
 DEV_BY_UUID = '/dev/disk/by-uuid/'
 
 UDEVADM_RGX = re.compile(r'(N:|E: DEVLINKS=|E: DEVNAME=)\s*(.*)')
 MOUNT_RGX = re.compile(r'\s*(\S*)\s*\S*\s*(\S*).*')
 DF_RGX = re.compile(r'(?!(Filesystem|df:))(\s*\S*\s*(\S*)\s*\S*\s*(\S*).*)')
-REVISION_RGX = re.compile(r'\s*(Full|Incremental)\s*(\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(\S*)\s*(\S*)')
-REVISION_FIELDS = ('type', 'day', 'month', 'dayOfMo', 'time', 'year', 'nVolumes')
-MONTHS = {month: n for n, month in enumerate('Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(), 1)}
-# each line is a date such as 'Sun Oct  5 23:32:44 2026' followed by a path, which may contain spaces
+REVISION_RGX = re.compile(r'\s*(Full|Incremental)\s*(\S*)\s*(\S*)\s*(\S*)'
+                          r'\s*(\S*)\s*(\S*)\s*(\S*)')
+REVISION_FIELDS = ('type', 'day', 'month', 'dayOfMo', 'time', 'year',
+                   'nVolumes')
+MONTHS = {month: n for n, month in enumerate(
+    'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(), 1)}
+# a date like 'Sun Oct  5 23:32:44 2026', then a path that may contain spaces
 FILE_LIST_RGX = re.compile(r'(\w{3}\s+\w{3}\s+\d+\s+[\d:]+\s+\d{4}) (.*)')
-STATUS_RGX = re.compile(r'(DeletedFiles|ChangedFiles|NewFiles|NewFileSize|ChangedFileSize|DeletedFileSize)\s*(.*)')
-# duplicity statistic -> (status line, text, whether it is added to the line rather than replacing it)
+STATUS_RGX = re.compile(r'(DeletedFiles|ChangedFiles|NewFiles|'
+                        r'NewFileSize|ChangedFileSize|DeletedFileSize)\s*(.*)')
+# duplicity statistic -> (status line, text, appended rather than replacing)
 STATUS_LINES = {
     'NewFiles': ('new', 'New Files: {}', False),
     'ChangedFiles': ('modified', 'Modified Files: {}', False),
@@ -50,7 +54,8 @@ def get_known_backups():
             path = get_mount_point_for_uuid(uuid)
             if not path:
                 continue
-            for fbdb in (x for x in os.listdir(path) if x.startswith('.duplibackdb')):
+            for fbdb in (x for x in os.listdir(path)
+                         if x.startswith('.duplibackdb')):
                 fn = os.path.join(path, fbdb, PROPERTIES_FILE)
                 try:
                     o = _read_pickle(fn)
@@ -90,7 +95,8 @@ def is_writable(path):
         return False
 
 def get_writable_devices():
-    return [uuid for uuid in get_mounted_devices() if is_writable(get_mount_point_for_uuid(uuid))]
+    return [uuid for uuid in get_mounted_devices()
+            if is_writable(get_mount_point_for_uuid(uuid))]
 
 def get_backup_assertion_error(uuid, host, path, test_exists=True):
     # the first reason a backup cannot be run, or None
@@ -115,22 +121,26 @@ def test_backup_assertions(uuid, host, path, test_exists=True):
     return True
 
 def exec_subprocess_cmd(cmd, env=None):
-    # cmd is an argument list and never goes through a shell, so paths and
-    # passwords do not need escaping
-    with subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1, universal_newlines=True, env=env) as proc:
+    # cmd is an argument list run without a shell: paths and passwords need
+    # no escaping
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1,
+                          universal_newlines=True, env=env) as proc:
         yield from proc.stdout
 
 def run_subprocess_cmd(cmd, env=None):
-    # runs cmd to completion, logging its output, and returns its exit code
-    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True, env=env) as proc:
+    # runs cmd to completion, logging its output; returns its exit code
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          bufsize=1, universal_newlines=True, env=env) as proc:
         for line in proc.stdout:
             logging.debug(line)
     return proc.returncode
 
 def get_dev_paths_for_uuid(uuid):
     ret_paths = set()
-    udevadm_cmd = ['udevadm', 'info', '-q', 'all', '-n', os.path.join(DEV_BY_UUID, uuid)]
-    for regex_groups in filter(None, map(UDEVADM_RGX.match, exec_subprocess_cmd(udevadm_cmd))):
+    udevadm_cmd = ['udevadm', 'info', '-q', 'all', '-n',
+                   os.path.join(DEV_BY_UUID, uuid)]
+    for regex_groups in filter(None, map(UDEVADM_RGX.match,
+                                         exec_subprocess_cmd(udevadm_cmd))):
         key, value = regex_groups.group(1), regex_groups.group(2).strip()
         if key == 'N:':
             ret_paths.add(os.path.join('/dev', value))
@@ -149,15 +159,18 @@ def get_mount_point_for_uuid(uuid):
 
 def get_drive_name(uuid):
     # the last disk/by-id link wins
-    by_id = (path for path in reversed(get_dev_paths_for_uuid(uuid)) if 'disk/by-id' in path)
-    return next((path[path.index('disk/by-id')+11:] for path in by_id), 'UUID: ' + uuid)
+    by_id = (path for path in reversed(get_dev_paths_for_uuid(uuid))
+             if 'disk/by-id' in path)
+    return next((path[path.index('disk/by-id')+11:] for path in by_id),
+                'UUID: ' + uuid)
 
 def get_free_space(uuid):
     for line in exec_subprocess_cmd(['df', get_mount_point_for_uuid(uuid)]):
         regex_groups = DF_RGX.match(line)
         if regex_groups:
             # a size of 0 means the amount of space is unknown
-            return -1 if 0 == int(regex_groups.group(3)) else int(regex_groups.group(4)) * 1024
+            return (-1 if 0 == int(regex_groups.group(3))
+                    else int(regex_groups.group(4)) * 1024)
     return -1
 
 def get_git_db_name(uuid, host, path):
@@ -181,38 +194,45 @@ def gen_passwordCmd(password):
     return [] if password else ['--no-encryption']
 
 def gen_duplicityEnv(password):
-    # versions 0.3.0 - 0.4.0 inverted the encryption flag, which encrypted backups
-    # without a password using the literal passphrase 'None'. duplicity decrypts
-    # each volume as needed, so supplying it keeps those volumes readable.
+    # 0.3.0 - 0.4.0 inverted the encryption flag, encrypting password-less
+    # backups with the literal passphrase 'None'. duplicity decrypts each
+    # volume as needed, so supplying it keeps those volumes readable.
     return dict(os.environ, PASSPHRASE=password or 'None')
 
 def duplicity_cmd(password, options, operands):
-    # the encryption flag goes with the PASSPHRASE from gen_duplicityEnv, so
-    # duplicity commands for a backup are always built and run through here
+    # the encryption flag must match gen_duplicityEnv's PASSPHRASE, so build
+    # and run a backup's duplicity commands only through here
     return ['duplicity'] + options + gen_passwordCmd(password) + operands
 
 def run_duplicity(password, options, operands):
-    return run_subprocess_cmd(duplicity_cmd(password, options, operands), gen_duplicityEnv(password))
+    return run_subprocess_cmd(duplicity_cmd(password, options, operands),
+                              gen_duplicityEnv(password))
 
 def stream_duplicity(password, options, operands):
-    return exec_subprocess_cmd(duplicity_cmd(password, options, operands), gen_duplicityEnv(password))
+    return exec_subprocess_cmd(duplicity_cmd(password, options, operands),
+                               gen_duplicityEnv(password))
 
 def gen_passwordEncrypt(password):
     if not password:
         return ''
     salt = os.urandom(16)
-    digest = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, PASSWORD_HASH_ITERATIONS)
-    return 'pbkdf2_sha256$%d$%s$%s' % (PASSWORD_HASH_ITERATIONS, salt.hex(), digest.hex())
+    digest = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt,
+                                 PASSWORD_HASH_ITERATIONS)
+    return 'pbkdf2_sha256$%d$%s$%s' % (PASSWORD_HASH_ITERATIONS, salt.hex(),
+                                       digest.hex())
 
 def check_password(password, password_hash):
     if not password or not password_hash:
         return False
     if password_hash.startswith('pbkdf2_sha256$'):
         _, iterations, salt, digest = password_hash.split('$')
-        candidate = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), bytes.fromhex(salt), int(iterations)).hex()
+        candidate = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'),
+                                        bytes.fromhex(salt),
+                                        int(iterations)).hex()
         return hmac.compare_digest(candidate, digest)
-    # backups created before this change stored an unsalted md5 hash
-    return hmac.compare_digest(hashlib.md5(password.encode('utf-8')).hexdigest(), password_hash)
+    # older backups stored an unsalted md5 hash
+    return hmac.compare_digest(
+        hashlib.md5(password.encode('utf-8')).hexdigest(), password_hash)
 
 def get_file_size(filepath):
     try:
@@ -222,20 +242,30 @@ def get_file_size(filepath):
         return -1
 
 def get_large_files(path, max_bytes):
-    # walks the tree lazily so a large source is never listed into memory at once
-    filepaths = (os.path.join(dirpath, filename) for dirpath, dirnames, filenames in os.walk(path) for filename in filenames)
-    return (filepath for filepath in filepaths if get_file_size(filepath) > max_bytes)
+    # lazy, so a large source is never listed into memory at once
+    filepaths = (os.path.join(dirpath, filename)
+                 for dirpath, dirnames, filenames in os.walk(path)
+                 for filename in filenames)
+    return (filepath for filepath in filepaths
+            if get_file_size(filepath) > max_bytes)
 
 def gen_exclusionCmd( preferences, path ):
-    patterns = [pattern for preference, value in preferences.items() if value and preference in settings.FILEEXT_EXCLUDE_MAP
+    patterns = [pattern for preference, value in preferences.items()
+                if value and preference in settings.FILEEXT_EXCLUDE_MAP
                 for pattern in settings.FILEEXT_EXCLUDE_MAP[preference]]
-    # custom filters are separated by ':', a literal ':' is escaped as '\:'
-    patterns += [file_filter.replace('\\:', ':') for file_filter in re.split(r'(?<!\\):', preferences['exclude_filters']) if file_filter]
-    exclusion_list = [arg for pattern in patterns for arg in ('--exclude', pattern)]
+    # custom filters are ':' separated; a literal ':' is escaped as '\:'
+    patterns += [file_filter.replace('\\:', ':')
+                 for file_filter in re.split(r'(?<!\\):',
+                                             preferences['exclude_filters'])
+                 if file_filter]
+    exclusion_list = [arg for pattern in patterns
+                      for arg in ('--exclude', pattern)]
     # duplicity has no file size filter, so exclude each large file by name
     if preferences['exclude_filesize']:
         max_bytes = preferences['exclude_filesize'] * 1024*1024*1024
-        exclusion_list += [arg for filepath in get_large_files(path, max_bytes) for arg in ('--exclude-regexp', '^%s$' % re.escape(filepath))]
+        exclusion_list += [arg for filepath in get_large_files(path, max_bytes)
+                           for arg in ('--exclude-regexp',
+                                       '^%s$' % re.escape(filepath))]
     return exclusion_list
 
 
@@ -256,11 +286,12 @@ def init_backup(uuid, host, path, password):
         return False
     os.mkdir(duplicity_dir)
     # write config info
-    _write_properties(duplicity_dir, {'uuid':uuid,
-                                      'host':host,
-                                      'path':path,
-                                      'version':settings.PROGRAM_VERSION,
-                                      'password': gen_passwordEncrypt(password)})
+    _write_properties(duplicity_dir, {
+        'uuid':uuid,
+        'host':host,
+        'path':path,
+        'version':settings.PROGRAM_VERSION,
+        'password': gen_passwordEncrypt(password)})
     # save default preferences
     preferences = dict(settings.DEFAULT_PREFERENCES)
     if not password:
@@ -272,13 +303,14 @@ def init_backup(uuid, host, path, password):
 def _backup_args(duplicity_dir, path):
     # the options and operands shared by a backup and its dry run
     exclusions = gen_exclusionCmd(_read_preferences(duplicity_dir), path)
-    return exclusions, [path, backup_uri(duplicity_dir), '--allow-source-mismatch']
+    return exclusions, [path, backup_uri(duplicity_dir),
+                        '--allow-source-mismatch']
 
 
 def backup(uuid, host, path, password):
     assert test_backup_assertions(uuid, host, path)
     duplicity_dir = get_backupPath(uuid, host, path)
-    # check that dir exists & create it if it does not
+    # create the backup dir if missing
     if not os.path.exists(duplicity_dir):
         init_backup(uuid, host, path, password)
     exclusions, operands = _backup_args(duplicity_dir, path)
@@ -298,8 +330,8 @@ def get_properties(uuid, host, path):
 
 
 def _write_properties(duplicity_dir, properties):
-    # backups are only discovered through this file, so write it to a temporary
-    # file first rather than risk truncating it if the drive is pulled mid write
+    # backups are only discovered through this file, so write a temp file
+    # first rather than risk truncating it if the drive is pulled mid write
     tmp_fn = os.path.join(duplicity_dir, PROPERTIES_FILE + '.tmp')
     try:
         with open(tmp_fn, 'wb') as f:
@@ -318,7 +350,7 @@ def save_properties(uuid, host, path, properties):
 
 
 def upgrade_password_hash(uuid, host, path, password):
-    # replace a legacy unsalted md5 hash once the user has proven they know the password
+    # replace a legacy unsalted md5 hash once the password is proven
     duplicity_dir = get_backupPath(uuid, host, path)
     properties = _read_properties(duplicity_dir)
     password_hash = properties.get('password', '')
@@ -340,7 +372,7 @@ def _read_preferences(duplicity_dir):
     except Exception as e:
         logging.error(e)
         return preferences
-    # deal with a change in version numbers
+    # fill in what older versions did not store
     if o:
         # version 0.1.0 did not store a version number
         o.setdefault('app_version', settings.PROGRAM_VERSION)
@@ -368,7 +400,7 @@ def _write_preferences(duplicity_dir, preferences):
 
 
 def save_preferences(uuid, host, path, preferences):
-    # delta the difference with the old preferences
+    # merge into the stored preferences
     duplicity_dir = get_backupPath(uuid, host, path)
     pref = _read_preferences(duplicity_dir)
     pref.update( preferences )
@@ -377,7 +409,8 @@ def save_preferences(uuid, host, path, preferences):
 
 def get_revisions(uuid, host, path):
     revision_history = []
-    for line in exec_subprocess_cmd(['duplicity', 'collection-status', get_backupUri(uuid, host, path)]):
+    for line in exec_subprocess_cmd(['duplicity', 'collection-status',
+                                     get_backupUri(uuid, host, path)]):
         regex_groups = REVISION_RGX.match(line)
         logging.debug(line)
         if regex_groups:
@@ -391,8 +424,10 @@ def get_revisions(uuid, host, path):
 
 
 def get_files_for_revision(uuid, host, path, rev, password, callback):
-    lines = stream_duplicity(password, ['list-current-files', '--time', rev], [get_backupUri(uuid, host, path)])
-    for regex_groups in filter(None, (FILE_LIST_RGX.match(line.rstrip('\n')) for line in lines)):
+    lines = stream_duplicity(password, ['list-current-files', '--time', rev],
+                             [get_backupUri(uuid, host, path)])
+    for regex_groups in filter(None, (FILE_LIST_RGX.match(line.rstrip('\n'))
+                                      for line in lines)):
         try:
             callback([regex_groups.group(2), regex_groups.group(1)])
         except Exception as e:
@@ -400,22 +435,26 @@ def get_files_for_revision(uuid, host, path, rev, password, callback):
 
 
 def export_revision(uuid, host, path, rev, target_path, password):
-    # restores rev into a temporary directory and, if target_path is given, archives it there
+    # restores rev to a temp dir, then archives it into target_path if given
     prety_rev= rev.replace(":",".")
-    tmp_dir = os.path.join(tempfile.mkdtemp(suffix='_dupliback'), 'archive-%s' % (prety_rev))
-    if run_duplicity(password, ['restore', '--time', rev], [get_backupUri(uuid, host, path), tmp_dir]) != 0:
+    tmp_dir = os.path.join(tempfile.mkdtemp(suffix='_dupliback'),
+                           'archive-%s' % (prety_rev))
+    if run_duplicity(password, ['restore', '--time', rev],
+                     [get_backupUri(uuid, host, path), tmp_dir]) != 0:
         logging.error('failed to restore revision %s', rev)
         return None, tmp_dir
     fn = None
     if target_path:
-        fn = os.path.join(target_path, 'dupliback-archive_r%s.tar.gz' % (prety_rev))
-        run_subprocess_cmd(['tar', '-czf', fn, '-C', os.path.dirname(tmp_dir), os.path.basename(tmp_dir)])
+        fn = os.path.join(target_path,
+                          'dupliback-archive_r%s.tar.gz' % (prety_rev))
+        run_subprocess_cmd(['tar', '-czf', fn, '-C', os.path.dirname(tmp_dir),
+                            os.path.basename(tmp_dir)])
     return fn, tmp_dir
 
 def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
     duplicity_uri = get_backupUri(uuid, host, path)
-    # duplicity 3 will not restore over an existing path even with --force, so restore
-    # into a scratch directory on the same filesystem and copy the result into place
+    # duplicity 3 will not restore over an existing path even with --force,
+    # so restore into a scratch dir on the same filesystem and copy it over
     tmp_dir = tempfile.mkdtemp(prefix='.dupliback_restore_', dir=path)
     restored = os.path.join(tmp_dir, 'restored')
     if restorePath is None:
@@ -423,13 +462,15 @@ def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
         operands = []
     else:
         dst_dir = path + restorePath
-        # '-r' is --file-to-restore before duplicity 2.0 and --path-to-restore after
+        # '-r': --file-to-restore before duplicity 2.0, --path-to-restore after
         operands = ['-r', restorePath[1:]]
-    returncode = run_duplicity(password, ['restore', '--force', '--time', rev], operands + [duplicity_uri, restored])
+    returncode = run_duplicity(password, ['restore', '--force', '--time', rev],
+                               operands + [duplicity_uri, restored])
     try:
         if returncode == 0:
             if os.path.isdir(restored) and not os.path.islink(restored):
-                shutil.copytree(restored, dst_dir, symlinks=True, dirs_exist_ok=True)
+                shutil.copytree(restored, dst_dir, symlinks=True,
+                                dirs_exist_ok=True)
             else:
                 os.makedirs(os.path.dirname(dst_dir), exist_ok=True)
                 os.replace(restored, dst_dir)
@@ -440,10 +481,13 @@ def restore_to_revision( uuid, host, path, rev, password, restorePath=None):
 
 def get_status(uuid, host, path, password):
     assert test_backup_assertions(uuid, host, path)
-    backup_status = {'new': ['New Files: 0'], 'modified': ['Modified Files: 0'], 'deleted': ['Deleted Files: 0']}
-    # use the same exclusions as a real backup so the counts match what would be backed up
+    backup_status = {'new': ['New Files: 0'],
+                     'modified': ['Modified Files: 0'],
+                     'deleted': ['Deleted Files: 0']}
+    # a real backup's exclusions, so the counts match what it would back up
     exclusions, operands = _backup_args(get_backupPath(uuid, host, path), path)
-    for line in stream_duplicity(password, ['--dry-run'] + exclusions, operands):
+    for line in stream_duplicity(password, ['--dry-run'] + exclusions,
+                                 operands):
         regex_groups = STATUS_RGX.match(line)
         if regex_groups:
             key, text, added = STATUS_LINES[regex_groups.group(1)]
@@ -453,7 +497,8 @@ def get_status(uuid, host, path, password):
             else:
                 backup_status[key] = [text]
         logging.debug(line)
-    return tuple(' '.join(backup_status[key]) for key in ('new', 'modified', 'deleted'))
+    return tuple(' '.join(backup_status[key])
+                 for key in ('new', 'modified', 'deleted'))
 
 
 def delete_backup(uuid, host, path):
@@ -469,7 +514,7 @@ def show_error_dialog(error_msg):
 def launch_error(error_msg):
     if not SHOW_ERROR_DIALOGS:
         return
-    # gtk may only be used from the main thread, backups run on worker threads
+    # gtk is main thread only; backups run on worker threads
     if threading.current_thread() is threading.main_thread():
         show_error_dialog(error_msg)
     else:

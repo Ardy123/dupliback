@@ -10,17 +10,17 @@ import time
 
 import pytest
 
-SRC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src')
+SRC_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src')
 sys.path.insert(0, SRC_DIR)
 
 GUI_TESTS_ON_DESKTOP = bool(os.environ.get('DUPLIBACK_GUI_TESTS_ON_DESKTOP'))
 
 
 def start_virtual_display():
-    # The GUI tests open and close hundreds of real windows. On a real desktop that
-    # has crashed the window manager (KWin), so they run on a private Xvfb server
-    # instead, and are skipped when Xvfb is not installed. This has to happen
-    # before Gtk is imported, which is when Gtk connects to the display.
+    # the gui tests open hundreds of real windows, which crashed kwin on the
+    # desktop, so they run on a private xvfb server (skipped without xvfb).
+    # must happen before gtk is imported, as that connects to the display.
     if GUI_TESTS_ON_DESKTOP:
         return
     os.environ.pop('WAYLAND_DISPLAY', None)
@@ -29,9 +29,12 @@ def start_virtual_display():
     display = None
     if xvfb:
         read_fd, write_fd = os.pipe()
-        # -displayfd picks a free display and writes its number once the server is ready
-        server = subprocess.Popen([xvfb, '-displayfd', str(write_fd), '-screen', '0', '1280x1024x24', '-nolisten', 'tcp'],
-                                  pass_fds=[write_fd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # -displayfd picks a free display, writes its number once ready
+        server = subprocess.Popen(
+            [xvfb, '-displayfd', str(write_fd), '-screen', '0',
+             '1280x1024x24', '-nolisten', 'tcp'],
+            pass_fds=[write_fd], stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL)
         os.close(write_fd)
         with os.fdopen(read_fd) as ready:
             display = ready.readline().strip()
@@ -74,10 +77,11 @@ def read(path):
 
 
 def write_legacy_hash(repo, password):
-    # stores the password as an unsalted md5 hash, as backups made before 0.5.0 did
+    # an unsalted md5 hash, as backups made before 0.5.0 stored it
     properties = backup.get_properties(*repo.args)
     properties['password'] = hashlib.md5(password.encode('utf-8')).hexdigest()
-    with open(os.path.join(backup.get_backupPath(*repo.args), backup.PROPERTIES_FILE), 'wb') as f:
+    with open(os.path.join(backup.get_backupPath(*repo.args),
+                           backup.PROPERTIES_FILE), 'wb') as f:
         pickle.dump(properties, f)
     return properties['password']
 
@@ -92,7 +96,8 @@ def fake_drive(tmp_path, monkeypatch):
     drive = tmp_path / 'drive'
     drive.mkdir()
     monkeypatch.setattr(backup, 'is_dev_present', lambda uuid: True)
-    monkeypatch.setattr(backup, 'get_mount_point_for_uuid', lambda uuid: str(drive))
+    monkeypatch.setattr(backup, 'get_mount_point_for_uuid',
+                        lambda uuid: str(drive))
     # keep duplicity's signature cache out of ~/.cache
     monkeypatch.setenv('XDG_CACHE_HOME', str(tmp_path / 'cache'))
     return str(drive)
@@ -132,9 +137,8 @@ def protected(repo):
     return repo
 
 
-# duplicity decides what changed by comparing mtimes to the second, so a file or
-# directory touched in the same second as a backup may or may not count as
-# changed. Tests that check change counts pin mtimes to make them exact.
+# duplicity compares mtimes to the second, so a change made in the same second
+# as a backup may not count; tests that check change counts pin mtimes.
 PINNED_MTIME = 1600000000
 
 
@@ -155,10 +159,13 @@ def status_count(label, text):
     return int(match.group(1))
 
 
-HAS_DISPLAY = bool(os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'))
-NO_DISPLAY_REASON = ('GUI tests need Xvfb (apt install xvfb); set DUPLIBACK_GUI_TESTS_ON_DESKTOP=1 '
+HAS_DISPLAY = bool(os.environ.get('DISPLAY')
+                   or os.environ.get('WAYLAND_DISPLAY'))
+NO_DISPLAY_REASON = ('GUI tests need Xvfb (apt install xvfb); '
+                     'set DUPLIBACK_GUI_TESTS_ON_DESKTOP=1 '
                      'to run them on your desktop instead')
-requires_display = pytest.mark.skipif(not HAS_DISPLAY, reason=NO_DISPLAY_REASON)
+requires_display = pytest.mark.skipif(not HAS_DISPLAY,
+                                      reason=NO_DISPLAY_REASON)
 
 
 def run_in_main_loop(func):
@@ -180,7 +187,7 @@ def run_in_main_loop(func):
 
 
 def wait_until(predicate, timeout=60):
-    # pumps gtk events until predicate() is true, so worker threads can hand results back
+    # pumps gtk events until predicate() holds, so worker threads can reply
     from gi.repository import Gtk
     deadline = time.monotonic() + timeout
     while not predicate():
@@ -191,7 +198,7 @@ def wait_until(predicate, timeout=60):
 
 
 class GuiEnv(object):
-    # answers modal dialogs and records actions that would otherwise touch the desktop
+    # answers modal dialogs, records actions that would touch the desktop
     def __init__(self):
         self.dialog_response = None
         self.dialogs_run = []
@@ -225,13 +232,15 @@ def gui_env(monkeypatch):
         env.dialogs_run.append(dialog)
         return env.dialog_response
     monkeypatch.setattr(Gtk.Dialog, 'run', run_dialog)
-    monkeypatch.setattr(Gtk.FileChooserDialog, 'get_filename', lambda self: env.chosen_folder)
+    monkeypatch.setattr(Gtk.FileChooserDialog, 'get_filename',
+                        lambda self: env.chosen_folder)
     monkeypatch.setattr(Gtk.Menu, 'popup', lambda self, *args: None)
     monkeypatch.setattr(util, 'open_file', env.opened_files.append)
     takedown = backup_progress_gui.GUI.takedownProgressBar
     def record_takedown(self):
         takedown(self)
         env.takedowns.append(self)
-    monkeypatch.setattr(backup_progress_gui.GUI, 'takedownProgressBar', record_takedown)
+    monkeypatch.setattr(backup_progress_gui.GUI, 'takedownProgressBar',
+                        record_takedown)
     yield env
     wait_until(lambda: True)

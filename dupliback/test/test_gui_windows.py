@@ -15,16 +15,21 @@ def recorded_windows(monkeypatch):
     opened = Opened()
     def recorder(name):
         return lambda *args: opened.append((name, args)) or object()
-    monkeypatch.setattr(select_backup_gui.manage_backup_gui, 'GUI', recorder('manage'))
-    monkeypatch.setattr(create_backup_gui.manage_backup_gui, 'GUI', recorder('manage'))
-    opened.record_create = lambda: monkeypatch.setattr(create_backup_gui, 'GUI', recorder('create'))
+    monkeypatch.setattr(select_backup_gui.manage_backup_gui, 'GUI',
+                        recorder('manage'))
+    monkeypatch.setattr(create_backup_gui.manage_backup_gui, 'GUI',
+                        recorder('manage'))
+    opened.record_create = lambda: monkeypatch.setattr(
+        create_backup_gui, 'GUI', recorder('create'))
     return opened
 
 
 @pytest.fixture
 def known_drive(repo, monkeypatch):
     # makes the fake drive look like a real attached usb drive
-    monkeypatch.setattr(backup, 'get_dev_paths_for_uuid', lambda uuid: ['/dev/sdb1', '/dev/disk/by-id/usb-Test_Drive-0:0'])
+    monkeypatch.setattr(backup, 'get_dev_paths_for_uuid',
+                        lambda uuid: ['/dev/sdb1',
+                                      '/dev/disk/by-id/usb-Test_Drive-0:0'])
     monkeypatch.setattr(backup, 'get_free_space', lambda uuid: 5 * 1024 ** 3)
     monkeypatch.setattr(backup, 'get_device_type', lambda uuid: 'local')
     return repo
@@ -37,7 +42,9 @@ def select_window(gui_env, known_backups, monkeypatch):
 
 
 def rows(gui):
-    return [list(row) for row in gui.gtkbuilder.get_object('treeview_backups').get_model()]
+    return [list(row)
+            for row in gui.gtkbuilder.get_object('treeview_backups')
+            .get_model()]
 
 
 def select_row(gui, n):
@@ -53,25 +60,33 @@ def properties(repo):
 
 # --- select backup window
 
-def test_select_without_backups_offers_to_create_one(gui_env, monkeypatch, recorded_windows):
+def test_select_without_backups_offers_to_create_one(gui_env, monkeypatch,
+                                                     recorded_windows):
     recorded_windows.record_create()
     gui = select_window(gui_env, [], monkeypatch)
-    assert [row[1] for row in rows(gui)] == ['No existing backups found.\nDouble-click here to create a new backup...']
+    assert [row[1] for row in rows(gui)] == [
+        'No existing backups found.\n'
+        'Double-click here to create a new backup...']
     select_row(gui, 0)
     gui.open_backup()
     assert [name for name, args in recorded_windows] == ['create']
 
 
-def test_select_lists_backup_status_for_each_drive(known_drive, gui_env, monkeypatch):
+def test_select_lists_backup_status_for_each_drive(known_drive, gui_env,
+                                                   monkeypatch):
     backup.init_backup(*known_drive.args, None)
     other_host = dict(properties(known_drive), host='another-computer')
     missing_drive = dict(properties(known_drive), uuid='MISSING')
-    monkeypatch.setattr(backup, 'is_dev_present', lambda uuid: uuid != 'MISSING')
+    monkeypatch.setattr(backup, 'is_dev_present',
+                        lambda uuid: uuid != 'MISSING')
     types = iter(['local', 'gvfs', None])
     monkeypatch.setattr(backup, 'get_device_type', lambda uuid: next(types))
-    gui = select_window(gui_env, [properties(known_drive), other_host, missing_drive], monkeypatch)
+    gui = select_window(gui_env,
+                        [properties(known_drive), other_host, missing_drive],
+                        monkeypatch)
     texts = [row[1] for row in rows(gui)]
-    assert 'Drive is ready for backups' in texts[0] and '5.0GB free' in texts[0]
+    assert ('Drive is ready for backups' in texts[0]
+            and '5.0GB free' in texts[0])
     assert 'export only' in texts[1]
     assert 'Drive is unavailable' in texts[2]
     assert texts[3].startswith('Double-click here')
@@ -92,15 +107,20 @@ def test_select_buttons_follow_selection(known_drive, gui_env, monkeypatch):
     gui.close()
 
 
-def test_open_unprotected_backup(known_drive, gui_env, monkeypatch, recorded_windows):
+def test_open_unprotected_backup(known_drive, gui_env, monkeypatch,
+                                 recorded_windows):
     backup.init_backup(*known_drive.args, None)
     gui = select_window(gui_env, [properties(known_drive)], monkeypatch)
     select_row(gui, 0)
     gui.open_backup()
-    assert recorded_windows == [('manage', (gui_env.register, gui_env.unregister, *known_drive.args, None))]
+    assert recorded_windows == [('manage', (gui_env.register,
+                                            gui_env.unregister,
+                                            *known_drive.args, None))]
 
 
-def test_open_protected_backup_asks_for_password(known_drive, gui_env, monkeypatch, recorded_windows):
+def test_open_protected_backup_asks_for_password(known_drive, gui_env,
+                                                 monkeypatch,
+                                                 recorded_windows):
     import password_managment
     backup.init_backup(*known_drive.args, 'pw')
     gui = select_window(gui_env, [properties(known_drive)], monkeypatch)
@@ -110,7 +130,9 @@ def test_open_protected_backup_asks_for_password(known_drive, gui_env, monkeypat
     assert dialog.check_password_window['main_window'].get_visible()
     dialog.check_password_window['password_entry_question'].set_text('pw')
     dialog.passwordCheck_okClicked()
-    assert recorded_windows == [('manage', (gui_env.register, gui_env.unregister, *known_drive.args, 'pw'))]
+    assert recorded_windows == [('manage', (gui_env.register,
+                                            gui_env.unregister,
+                                            *known_drive.args, 'pw'))]
     gui.passwordCancel()
 
 
@@ -139,8 +161,10 @@ def create_window(gui_env, monkeypatch, devices):
 
 def choose_folder(monkeypatch, preview_uri, filename):
     from gi.repository import Gtk
-    monkeypatch.setattr(Gtk.FileChooserButton, 'get_preview_uri', lambda self: preview_uri)
-    monkeypatch.setattr(Gtk.FileChooserButton, 'get_filename', lambda self: filename)
+    monkeypatch.setattr(Gtk.FileChooserButton, 'get_preview_uri',
+                        lambda self: preview_uri)
+    monkeypatch.setattr(Gtk.FileChooserButton, 'get_filename',
+                        lambda self: filename)
 
 
 def test_create_without_writable_drives(gui_env, monkeypatch):
@@ -154,12 +178,14 @@ def test_create_lists_drives_by_type(known_drive, gui_env, monkeypatch):
     types = iter(['gvfs', None, 'local'])
     monkeypatch.setattr(backup, 'get_device_type', lambda uuid: next(types))
     gui = create_window(gui_env, monkeypatch, ['A', 'B', 'C'])
-    assert len(rows(gui)) == 3 and all('Free Space:</b> 5.0GB' in row[1] for row in rows(gui))
+    assert len(rows(gui)) == 3 and all('Free Space:</b> 5.0GB' in row[1]
+                                       for row in rows(gui))
     assert gui.gtkbuilder.get_object('button_new').get_sensitive()
     gui.close()
 
 
-def test_create_needs_a_selected_drive(known_drive, gui_env, monkeypatch, recorded_windows):
+def test_create_needs_a_selected_drive(known_drive, gui_env, monkeypatch,
+                                       recorded_windows):
     gui = create_window(gui_env, monkeypatch, [known_drive.uuid])
     gui.init_backup('pw')
     assert gui_env.dialogs_run and recorded_windows == []
@@ -167,16 +193,24 @@ def test_create_needs_a_selected_drive(known_drive, gui_env, monkeypatch, record
 
 
 @pytest.mark.parametrize('use_preview_uri', [True, False])
-def test_create_backup_for_chosen_folder(known_drive, gui_env, monkeypatch, recorded_windows, use_preview_uri):
+def test_create_backup_for_chosen_folder(known_drive, gui_env, monkeypatch,
+                                         recorded_windows, use_preview_uri):
     gui = create_window(gui_env, monkeypatch, [known_drive.uuid])
-    choose_folder(monkeypatch, 'file://' + known_drive.path if use_preview_uri else None, known_drive.path)
+    choose_folder(monkeypatch,
+                  'file://' + known_drive.path if use_preview_uri else None,
+                  known_drive.path)
     select_row(gui, 0)
     gui.init_backup('pw')
-    assert backup.check_password('pw', backup.get_properties(*known_drive.args)['password'])
-    assert recorded_windows == [('manage', (gui_env.register, gui_env.unregister, *known_drive.args, 'pw'))]
+    assert backup.check_password(
+        'pw', backup.get_properties(*known_drive.args)['password'])
+    assert recorded_windows == [('manage', (gui_env.register,
+                                            gui_env.unregister,
+                                            *known_drive.args, 'pw'))]
 
 
-def test_create_existing_backup_does_not_open_it(known_drive, gui_env, monkeypatch, recorded_windows):
+def test_create_existing_backup_does_not_open_it(known_drive, gui_env,
+                                                 monkeypatch,
+                                                 recorded_windows):
     backup.init_backup(*known_drive.args, 'pw')
     gui = create_window(gui_env, monkeypatch, [known_drive.uuid])
     choose_folder(monkeypatch, None, known_drive.path)
@@ -211,9 +245,11 @@ def test_new_password_must_match(new_password):
     dialog, window, chosen = new_password
     window['password_entry1'].set_text('one')
     window['password_entry2'].set_text('two')
-    assert window['password_mismatch'].get_visible() and not window['ok_button'].get_sensitive()
+    assert (window['password_mismatch'].get_visible()
+            and not window['ok_button'].get_sensitive())
     window['password_entry2'].set_text('one')
-    assert not window['password_mismatch'].get_visible() and window['ok_button'].get_sensitive()
+    assert (not window['password_mismatch'].get_visible()
+            and window['ok_button'].get_sensitive())
     dialog.newPassword_okClicked(None)
     assert chosen == ['one']
 
@@ -228,9 +264,11 @@ def test_new_password_cannot_be_empty(new_password):
 def test_new_password_can_be_skipped(new_password):
     dialog, window, chosen = new_password
     window['password_checkbutton'].set_active(True)
-    assert not window['password_entry1'].get_sensitive() and window['ok_button'].get_sensitive()
+    assert (not window['password_entry1'].get_sensitive()
+            and window['ok_button'].get_sensitive())
     window['password_checkbutton'].set_active(False)
-    assert window['password_entry1'].get_sensitive() and not window['ok_button'].get_sensitive()
+    assert (window['password_entry1'].get_sensitive()
+            and not window['ok_button'].get_sensitive())
     window['password_checkbutton'].set_active(True)
     dialog.newPassword_okClicked(None)
     assert chosen == [None]
@@ -240,7 +278,9 @@ def test_password_check_cancel(gui_env):
     import password_managment
     cancelled = []
     dialog = password_managment.GUI(gui_env.register, gui_env.unregister)
-    dialog.passwordCheckDialog_show(None, backup.gen_passwordEncrypt('pw'), lambda p: None, lambda: cancelled.append(1))
+    dialog.passwordCheckDialog_show(None, backup.gen_passwordEncrypt('pw'),
+                                    lambda p: None,
+                                    lambda: cancelled.append(1))
     dialog.passwordCheck_cancelClicked()
     assert cancelled == [1]
 
@@ -250,8 +290,10 @@ def test_password_check_cancel(gui_env):
 def test_preferences_round_trip(repo, gui_env):
     import manage_backup_preferences_gui
     backup.init_backup(*repo.args, None)
-    backup.save_preferences(*repo.args, {'exclude_filters': '**/tmp/', 'exclude_filesize': 2})
-    gui = manage_backup_preferences_gui.GUI(gui_env.register, gui_env.unregister, *repo.args)
+    backup.save_preferences(*repo.args, {'exclude_filters': '**/tmp/',
+                                         'exclude_filesize': 2})
+    gui = manage_backup_preferences_gui.GUI(gui_env.register,
+                                            gui_env.unregister, *repo.args)
     get = gui.gtkbuilder.get_object
     assert get('custom_exclude_filter_value').get_text() == '**/tmp/'
     assert get('checkbutton_exclude_filesize').get_active()
@@ -267,8 +309,10 @@ def test_preferences_round_trip(repo, gui_env):
 def test_preferences_unchecked_options_are_cleared(repo, gui_env):
     import manage_backup_preferences_gui
     backup.init_backup(*repo.args, None)
-    backup.save_preferences(*repo.args, {'exclude_filters': '**/tmp/', 'exclude_filesize': 2})
-    gui = manage_backup_preferences_gui.GUI(gui_env.register, gui_env.unregister, *repo.args)
+    backup.save_preferences(*repo.args, {'exclude_filters': '**/tmp/',
+                                         'exclude_filesize': 2})
+    gui = manage_backup_preferences_gui.GUI(gui_env.register,
+                                            gui_env.unregister, *repo.args)
     get = gui.gtkbuilder.get_object
     get('checkbox_custom_filter_list').set_active(False)
     assert get('custom_exclude_filter_value').get_text() == ''
@@ -278,7 +322,8 @@ def test_preferences_unchecked_options_are_cleared(repo, gui_env):
     get('checkbutton_exclude_filesize').set_active(False)
     gui.save()
     preferences = backup.get_preferences(*repo.args)
-    assert preferences['exclude_filters'] == '' and preferences['exclude_filesize'] == 0
+    assert (preferences['exclude_filters'] == ''
+            and preferences['exclude_filesize'] == 0)
 
 
 # --- error dialog

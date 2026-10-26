@@ -20,7 +20,8 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-venv python3-gi python3-dbus gir1.2-gtk-3.0 duplicity xvfb
+          sudo apt-get install -y python3-venv python3-gi python3-dbus \
+            gir1.2-gtk-3.0 duplicity xvfb
 
       - name: Create .venv
         run: dupliback/setup_venv.sh
