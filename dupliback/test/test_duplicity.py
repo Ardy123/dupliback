@@ -20,9 +20,7 @@ def volumes(repo):
 
 
 def latest_revision(repo):
-    rev = backup.get_revisions(*repo.args)[-1]
-    return '%s-%02d-%02dT%s' % (rev['year'], rev['month'],
-                                int(rev['dayOfMo']), rev['time'])
+    return backup.revision_id(backup.get_revisions(*repo.args)[-1])
 
 
 def list_files(repo, rev, password):

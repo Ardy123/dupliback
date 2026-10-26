@@ -1,6 +1,8 @@
+import calendar
 import os
 import pickle
 import tempfile
+import time
 import traceback
 import hashlib
 import hmac
@@ -10,6 +12,7 @@ import socket
 import re
 import threading
 import settings
+import sigtar
 # unused, but pins Gtk to 3.0 before the import below
 import util
 from gi.repository import Gtk, GLib
@@ -26,12 +29,12 @@ DEV_BY_UUID = '/dev/disk/by-uuid/'
 UDEVADM_RGX = re.compile(r'(N:|E: DEVLINKS=|E: DEVNAME=)\s*(.*)')
 MOUNT_RGX = re.compile(r'\s*(\S*)\s*\S*\s*(\S*).*')
 DF_RGX = re.compile(r'(?!(Filesystem|df:))(\s*\S*\s*(\S*)\s*\S*\s*(\S*).*)')
-REVISION_RGX = re.compile(r'\s*(Full|Incremental)\s*(\S*)\s*(\S*)\s*(\S*)'
-                          r'\s*(\S*)\s*(\S*)\s*(\S*)')
-REVISION_FIELDS = ('type', 'day', 'month', 'dayOfMo', 'time', 'year',
-                   'nVolumes')
-MONTHS = {month: n for n, month in enumerate(
-    'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(), 1)}
+# a set in collection-status's machine log, e.g. ' inc 20260321T075513Z 3 enc'
+REVISION_RGX = re.compile(r' (full|inc) (\d{8}T\d{6}Z) (\d+) ')
+SIGNATURE_RGX = re.compile(
+    r'duplicity-(?:full-signatures\.(?P<full>\d{8}T\d{6}Z)|new-signatures\.'
+    r'(?P<start>\d{8}T\d{6}Z)\.to\.(?P<end>\d{8}T\d{6}Z))'
+    r'\.sigtar\.(?:gz|gpg)$')
 # a date like 'Sun Oct  5 23:32:44 2026', then a path that may contain spaces
 FILE_LIST_RGX = re.compile(r'(\w{3}\s+\w{3}\s+\d+\s+[\d:]+\s+\d{4}) (.*)')
 STATUS_RGX = re.compile(r'(DeletedFiles|ChangedFiles|NewFiles|'
@@ -300,9 +303,20 @@ def init_backup(uuid, host, path, password):
     return True
 
 
+def own_cache_exclusions(path):
+    # never back up duplicity's or the app's caches when they are in path
+    source = os.path.realpath(path)
+    caches = (os.path.relpath(os.path.realpath(cache), source)
+              for cache in own_cache_dirs())
+    return [arg for cache in caches if not cache.startswith('..')
+            for arg in ('--exclude-regexp',
+                        '^%s(/|$)' % re.escape(os.path.join(path, cache)))]
+
+
 def _backup_args(duplicity_dir, path):
     # the options and operands shared by a backup and its dry run
-    exclusions = gen_exclusionCmd(_read_preferences(duplicity_dir), path)
+    exclusions = (own_cache_exclusions(path)
+                  + gen_exclusionCmd(_read_preferences(duplicity_dir), path))
     return exclusions, [path, backup_uri(duplicity_dir),
                         '--allow-source-mismatch']
 
@@ -407,20 +421,153 @@ def save_preferences(uuid, host, path, preferences):
     _write_preferences(duplicity_dir, pref)
 
 
+def utc_epoch(timestring):
+    # duplicity's '20260321T075513Z' times are UTC
+    return calendar.timegm(time.strptime(timestring, '%Y%m%dT%H%M%SZ'))
+
+
+def _revision(kind, timestring, volumes):
+    epoch = utc_epoch(timestring)
+    local = time.localtime(epoch)
+    return {'type': 'Full' if kind == 'full' else 'Incremental',
+            'epoch': epoch, 'day': time.asctime(local)[:3],
+            'month': local.tm_mon, 'dayOfMo': str(local.tm_mday),
+            'time': time.strftime('%H:%M:%S', local),
+            'year': str(local.tm_year), 'nVolumes': volumes}
+
+
 def get_revisions(uuid, host, path):
-    revision_history = []
-    for line in exec_subprocess_cmd(['duplicity', 'collection-status',
-                                     get_backupUri(uuid, host, path)]):
-        regex_groups = REVISION_RGX.match(line)
-        logging.debug(line)
-        if regex_groups:
-            try:
-                entry = dict(zip(REVISION_FIELDS, regex_groups.groups()))
-                entry['month'] = MONTHS[entry['month']]
-                revision_history.append(entry)
-            except Exception as e:
-                logging.debug(e)
-    return revision_history
+    # moments from collection-status's machine log, which has exact UTC times
+    # (the printed table is in local time, ambiguous when clocks go back)
+    with tempfile.NamedTemporaryFile('r', suffix='.log') as log_file:
+        for line in exec_subprocess_cmd(['duplicity', 'collection-status',
+                                         '--log-file', log_file.name,
+                                         get_backupUri(uuid, host, path)]):
+            logging.debug(line)
+        return [_revision(*match.groups())
+                for match in map(REVISION_RGX.match, log_file) if match]
+
+
+def revision_id(rev):
+    # what --time is given for a moment: its UTC epoch
+    return str(rev['epoch'])
+
+
+def revision_label(rev_id):
+    # a file name friendly local time for a moment id
+    if str(rev_id).isdigit():
+        return time.strftime('%Y-%m-%dT%H.%M.%S',
+                             time.localtime(int(rev_id)))
+    return str(rev_id).replace(':', '.')
+
+
+def cache_home():
+    return os.environ.get('XDG_CACHE_HOME') or os.path.expanduser('~/.cache')
+
+
+def duplicity_cache_dir(duplicity_dir):
+    # duplicity's default archive dir for a backup is named by its url's md5
+    url_hash = hashlib.md5(backup_uri(duplicity_dir).encode()).hexdigest()
+    return os.path.join(cache_home(), 'duplicity', url_hash)
+
+
+def listing_cache_dir(duplicity_dir):
+    return os.path.join(cache_home(), 'dupliback',
+                        os.path.basename(duplicity_dir))
+
+
+def own_cache_dirs():
+    # caches the app and duplicity keep, which are never backed up
+    return [os.path.join(cache_home(), name)
+            for name in ('duplicity', 'dupliback')]
+
+
+def signature_chain(names, epoch):
+    # the signature files to replay, oldest first, for the moment at epoch;
+    # None unless names hold a complete chain ending exactly there
+    fulls, incs = {}, {}
+    for match in filter(None, map(SIGNATURE_RGX.match, names)):
+        if match.group('full'):
+            fulls[utc_epoch(match.group('full'))] = match.group(0)
+        else:
+            incs[utc_epoch(match.group('start'))] = (
+                utc_epoch(match.group('end')), match.group(0))
+    starts = [t for t in fulls if t <= epoch]
+    if not starts:
+        return None
+    t = max(starts)
+    chain = [fulls[t]]
+    while t < epoch and t in incs:
+        t, name = incs[t]
+        chain.append(name)
+    return chain if t == epoch else None
+
+
+def _replay_signatures(duplicity_dir, epoch, password):
+    # {name: mtime} for the moment, from duplicity's cache or, without it
+    # (e.g. restoring on a new machine), the backup's own signature files
+    for source in (duplicity_cache_dir(duplicity_dir), duplicity_dir):
+        try:
+            chain = signature_chain(os.listdir(source), epoch)
+        except OSError:
+            continue
+        if not chain:
+            continue
+        try:
+            # password-less backups by 0.3.0 - 0.4.0 used the passphrase 'None'
+            return sigtar.replay([os.path.join(source, name)
+                                  for name in chain], password or 'None')
+        except sigtar.FormatError as e:
+            logging.warning('could not read signatures in %s: %s', source, e)
+    return None
+
+
+def _read_listing(listing_file):
+    # streams (name, mtime) records written by _write_listing
+    with open(listing_file, 'rb') as listing:
+        rest = b''
+        for chunk in iter(lambda: listing.read(1 << 20), b''):
+            *records, rest = (rest + chunk).split(b'\0')
+            for record in records:
+                mtime, _, name = record.partition(b'\t')
+                yield os.fsdecode(name), int(mtime)
+
+
+def _write_listing(listing_file, items):
+    # passes items through while saving them; kept only if all were seen
+    os.makedirs(os.path.dirname(listing_file), exist_ok=True)
+    tmp_file = listing_file + '.tmp'
+    try:
+        with open(tmp_file, 'wb') as listing:
+            for name, mtime in items:
+                listing.write(b'%d\t%s\0' % (mtime, os.fsencode(name)))
+                yield name, mtime
+        os.replace(tmp_file, listing_file)
+    finally:
+        if os.path.exists(tmp_file):
+            os.remove(tmp_file)
+
+
+def list_files(uuid, host, path, rev, password, callback):
+    # lists a moment from its signature files, much faster than duplicity,
+    # and caches the result; falls back to duplicity if they can't be read
+    duplicity_dir = get_backupPath(uuid, host, path)
+    epoch = int(rev)
+    listing_file = os.path.join(listing_cache_dir(duplicity_dir),
+                                '%d.list' % epoch)
+    if os.path.exists(listing_file):
+        items = _read_listing(listing_file)
+    else:
+        state = _replay_signatures(duplicity_dir, epoch, password)
+        if state is None:
+            return get_files_for_revision(uuid, host, path, rev, password,
+                                          callback)
+        items = _write_listing(listing_file, sigtar.listing(state))
+    for name, mtime in items:
+        try:
+            callback([name, time.asctime(time.localtime(mtime))])
+        except Exception as e:
+            logging.debug(e)
 
 
 def get_files_for_revision(uuid, host, path, rev, password, callback):
@@ -436,7 +583,7 @@ def get_files_for_revision(uuid, host, path, rev, password, callback):
 
 def export_revision(uuid, host, path, rev, target_path, password):
     # restores rev to a temp dir, then archives it into target_path if given
-    prety_rev= rev.replace(":",".")
+    prety_rev = revision_label(rev)
     tmp_dir = os.path.join(tempfile.mkdtemp(suffix='_dupliback'),
                            'archive-%s' % (prety_rev))
     if run_duplicity(password, ['restore', '--time', rev],
@@ -502,7 +649,9 @@ def get_status(uuid, host, path, password):
 
 
 def delete_backup(uuid, host, path):
-    rmdir(get_backupPath(uuid, host, path))
+    duplicity_dir = get_backupPath(uuid, host, path)
+    rmdir(listing_cache_dir(duplicity_dir))
+    rmdir(duplicity_dir)
 
 def show_error_dialog(error_msg):
     err_dialog= error_dialog.ErrorDialog(error_msg, None)
