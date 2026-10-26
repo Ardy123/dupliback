@@ -24,6 +24,17 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   up in the process list.
 
 ### Added
+- **Delete and merge moments** (issue #19): a Delete button after Export opens
+  a screen listing every moment with its size. Delete removes any moments;
+  Merge squashes consecutive moments into the newest one selected. Moments
+  after a deleted one are rebuilt by duplicity and checked against the
+  original before anything on the drive changes; the change is journaled, so
+  an interruption can be finished or undone the next time the backup is
+  opened, and backups are blocked until then. This frees space and shortens
+  the history every listing and backup has to replay.
+- A new full backup is made when the last one is over a year old, unless the
+  drive may not have room for it; then an incremental backup is made and the
+  user is told to delete or merge old moments.
 - Test suite under `dupliback/test` with 80%+ coverage, a `requirements.txt` and
   `setup_venv.sh` for a `.venv` development environment.
 - RPM package build (`build_rpm.sh`, `packaging/rpm/dupliback.spec`).

@@ -8,6 +8,7 @@ import manage_backup_preferences_gui
 import backup_progress_gui
 import backup_status_gui
 import about_gui
+import prune_gui
 
 
 class FileTreeBuilder(object):
@@ -43,7 +44,7 @@ class GUI(object):
         self.main_window.destroy()
 
     def run_task(self, stock_icon, task_text, progress_msg, work,
-                 on_done=None, after=None):
+                 on_done=None, after=None, reports=False):
         # lists the task as running while work() runs; see run_with_progress
         tasks = self.gtkbuilder.get_object('running_tasks').get_model()
         row = tasks.append((
@@ -55,9 +56,17 @@ class GUI(object):
             tasks.remove(row)
         backup_progress_gui.run_with_progress(
             self.register_gui, self.unregister_gui, self.main_window,
-            progress_msg, work, done, after)
+            progress_msg, work, done, after, reports)
+
+    def update_toolbar(self):
+        # backing up needs this host and drive, and no rewrite in progress
+        can_backup = backup.test_backup_assertions(self.uuid, self.host,
+                                                   self.path)
+        for name in ('toolbutton_backup', 'toolbutton_status'):
+            self.gtkbuilder.get_object(name).set_sensitive(can_backup)
 
     def update_revisions(self):
+        self.update_toolbar()
         self.show_revisions(
             backup.get_revisions(self.uuid, self.host, self.path))
 
@@ -136,18 +145,30 @@ class GUI(object):
             'treeview_revisions').get_selection().get_selected()
         return model.get_value(entry, 1) if entry else None
 
+    def open_prune(self):
+        self.register_gui(prune_gui.GUI(self.register_gui, self.unregister_gui,
+                                        self))
+
     def open_preferences(self):
         self.register_gui( manage_backup_preferences_gui.GUI(
             self.register_gui, self.unregister_gui, self.uuid, self.host,
             self.path) )
 
     def start_backup(self):
+        notices = []
         def work():
-            backup.backup(self.uuid, self.host, self.path, self.password)
+            backup.backup(self.uuid, self.host, self.path, self.password,
+                          report=notices.append)
             # listed here so duplicity does not block the gtk thread
             return backup.get_revisions(self.uuid, self.host, self.path)
+        def show_notices(result):
+            for notice in notices:
+                util.message_dialog(Gtk.MessageType.INFO,
+                                    Gtk.ButtonsType.CLOSE,
+                                    'Full backup postponed', notice)
         self.run_task(Gtk.STOCK_SAVE, 'backing up: '+self.path,
-                      'Backing Up, Please Wait', work, self.show_revisions)
+                      'Backing Up, Please Wait', work, self.show_revisions,
+                      after=show_notices)
 
     def start_restore(self, selection=None ):
         rev = self.get_selected_revision()
@@ -253,14 +274,11 @@ class GUI(object):
         util.setup_window(self.main_window, 'Manage Backup')
 
         # toolbar
-        can_backup = backup.test_backup_assertions(self.uuid, self.host,
-                                                   self.path)
-        get('toolbutton_backup').set_sensitive( can_backup )
+        self.update_toolbar()
         get('toolbutton_backup').connect(
             'clicked', lambda x: self.start_backup() )
         get('toolbutton_restore').connect(
             'clicked', self.restore_button_notify )
-        get('toolbutton_status').set_sensitive( can_backup )
         get('toolbutton_status').connect(
             'clicked', lambda x: self.start_status() )
         get('toolbutton_export').connect(
@@ -270,6 +288,7 @@ class GUI(object):
         get('toolbutton_preferences').connect(
             'clicked', lambda x: self.open_preferences() )
         get('toolbutton_about').connect('clicked', lambda x: self.open_about() )
+        get('toolbutton_delete').connect('clicked', lambda x: self.open_prune())
 
         # revision list
         treeview_revisions_widget = get('treeview_revisions')
@@ -312,3 +331,4 @@ class GUI(object):
         # status bar time update
         self.status_bar_timer = GLib.timeout_add(3000, self.update_task_times)
         self.main_window.show()
+        prune_gui.offer_resume(self)

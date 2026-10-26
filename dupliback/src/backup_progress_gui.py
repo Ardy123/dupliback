@@ -5,10 +5,14 @@ from gi.repository import GLib
 
 
 def run_with_progress(register_gui, unregister_gui, parentWnd, msg, work,
-                      on_done=None, after=None):
+                      on_done=None, after=None, reports=False):
     # shows a progress dialog while work() runs on a thread, then on the gtk
-    # thread calls on_done(result), takes the dialog down, calls after(result)
+    # thread calls on_done(result), takes the dialog down, calls after(result).
+    # With reports, work(report) can update the dialog's message.
     progress = GUI(register_gui, unregister_gui, parentWnd, msg)
+    if reports:
+        task = work
+        work = lambda: task(progress.report)
     def finish(result):
         if on_done:
             on_done(result)
@@ -27,6 +31,14 @@ class GUI(object):
         GLib.source_remove(self.pulse_timer)
         self.unregister_gui(self)
         self.main_window.close()
+
+    def set_message(self, text):
+        self.message.set_label(text)
+        return False
+
+    def report(self, text):
+        # callable from any thread
+        GLib.idle_add(self.set_message, text)
 
     def pulse(self):
         self.progress_bar.pulse()

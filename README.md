@@ -28,6 +28,22 @@ Then create the development environment in `dupliback/.venv` and start the app:
 The venv is created with `--system-site-packages` so it uses the distro's PyGObject
 and dbus-python, which need system libraries to build.
 
+## Deleting and merging moments
+
+The **Delete** button in the Manage window lists every moment with its size.
+**Delete selected** removes moments; **Merge selected** squashes consecutive
+moments into the newest one selected, which keeps its exact state. duplicity
+backups are chains where each moment stores the changes since the previous
+one, so a moment after a deleted one is rebuilt: dupli.back restores it into
+`$XDG_CACHE_HOME/dupliback/rewrite`, has duplicity re-diff it against its new
+predecessor, and verifies the result (and, by default, the original) before
+the drive is changed. On a large backup each rebuilt moment takes hours and
+needs about the size of the backed up files in temporary space.
+
+A full backup is made automatically when the last one is over a year old, so
+histories stay short; if it might not fit on the drive, an incremental backup
+is made instead and you are asked to delete or merge old moments.
+
 ## Tests
 
     cd dupliback

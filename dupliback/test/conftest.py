@@ -137,6 +137,32 @@ def protected(repo):
     return repo
 
 
+BASE = 1700000000
+STEP = 100
+
+
+def build_moments(repo, password, steps, legacy=False):
+    # backs up repo.path once per step, step k at BASE + STEP * k, with tiny
+    # volumes so big files span several; legacy encrypts password-less
+    # moments with the passphrase 'None', as app versions 0.3.0 - 0.4.0 did
+    backup.init_backup(*repo.args, password)
+    uri = backup.get_backupUri(*repo.args)
+    epochs = []
+    for k, step in enumerate(steps):
+        step(repo.path)
+        epoch = BASE + STEP * k
+        options = ['--current-time', str(epoch), '--volsize', '1']
+        operands = [repo.path, uri, '--allow-source-mismatch']
+        if legacy and k < len(steps) // 2:
+            env = dict(os.environ, PASSPHRASE='None')
+            assert backup.run_subprocess_cmd(
+                ['duplicity'] + options + operands, env) == 0
+        else:
+            assert backup.run_duplicity(password, options, operands) == 0
+        epochs.append(epoch)
+    return epochs
+
+
 # duplicity compares mtimes to the second, so a change made in the same second
 # as a backup may not count; tests that check change counts pin mtimes.
 PINNED_MTIME = 1600000000
