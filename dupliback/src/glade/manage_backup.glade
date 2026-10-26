@@ -2,6 +2,21 @@
 <!-- Generated with glade 3.22.2 -->
 <interface>
   <requires lib="gtk+" version="3.0"/>
+  <object class="GtkImage" id="image_backup">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="pixbuf">../images/Backup.png</property>
+  </object>
+  <object class="GtkImage" id="image_restore">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="pixbuf">../images/Restore.png</property>
+  </object>
+  <object class="GtkImage" id="image_export">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="pixbuf">../images/package.png</property>
+  </object>
   <object class="GtkWindow" id="window">
     <property name="can_focus">False</property>
     <property name="window_position">center</property>
@@ -21,6 +36,7 @@
             <property name="can_focus">False</property>
             <child>
               <object class="GtkToolButton" id="toolbutton_backup">
+                <property name="icon_widget">image_backup</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="tooltip_text" translatable="yes">bookmark a new moment (backup)</property>
@@ -35,6 +51,7 @@
             </child>
             <child>
               <object class="GtkToolButton" id="toolbutton_restore">
+                <property name="icon_widget">image_restore</property>
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
                 <property name="can_focus">False</property>
@@ -50,6 +67,7 @@
             </child>
             <child>
               <object class="GtkToolButton" id="toolbutton_export">
+                <property name="icon_widget">image_export</property>
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
                 <property name="can_focus">False</property>

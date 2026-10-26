@@ -70,6 +70,8 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   menu (a GTK 3 port leftover). Right-clicking a moment now only opens its
   menu, **Restore Moment** or **Prune Moment**, instead of also selecting it
   and listing its files.
+- The Backup, Restore and Export toolbar buttons had lost their icons in the
+  GTK 3 port.
 - Exclusion categories were always applied, even when switched off, and empty
   custom filters added an empty exclusion.
 - The "exclude files over N GB" option could not be set (its spin button had no

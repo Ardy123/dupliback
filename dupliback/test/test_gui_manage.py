@@ -239,3 +239,15 @@ def test_running_task_timer_updates_elapsed_time(empty_manage, gui_env):
                   ''))
     wait_until(lambda: tasks[0][3] != '', timeout=10)
     assert tasks[0][3].startswith('1m')
+
+
+def test_every_toolbar_button_has_an_icon(empty_manage):
+    from gi.repository import Gtk
+    toolbar = empty_manage.gtkbuilder.get_object('toolbar1')
+    buttons = [child for child in toolbar.get_children()
+               if isinstance(child, Gtk.ToolButton)]
+    missing = [button.get_label() for button in buttons
+               if not button.get_stock_id()
+               and not (button.get_icon_widget()
+                        and button.get_icon_widget().get_pixbuf())]
+    assert buttons and missing == []
