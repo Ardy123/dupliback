@@ -1,0 +1,55 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  # lets the release workflow run the same checks before building packages
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-venv python3-gi python3-dbus gir1.2-gtk-3.0 duplicity xvfb
+
+      - name: Create .venv
+        run: dupliback/setup_venv.sh
+
+      - name: Run tests with coverage
+        working-directory: dupliback
+        # xvfb provides a display so the GUI tests run and count towards coverage;
+        # .coveragerc fails the run below 80%
+        run: xvfb-run -a .venv/bin/python -m pytest --cov --cov-report=term-missing
+
+  packages:
+    name: packages
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
+      - name: Build deb and rpm
+        run: |
+          ./build_deb.sh -b
+          ./build_rpm.sh -b
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: |
+            dupli.back-*.deb
+            dupli.back-*.rpm

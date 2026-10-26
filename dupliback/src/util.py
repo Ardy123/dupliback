@@ -1,17 +1,14 @@
 import os
 import subprocess
-import sys
-import threading
 import logging
-import time
 import dbus
 import gi
-from gi.repository import GObject
 from dbus.mainloop.glib import DBusGMainLoop
 
 gi.require_version('Gtk', '3.0')
 
-RUN_FROM_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
+# glade/ and images/ live next to the modules, both in src/ and once installed
+RUN_FROM_DIR = os.path.abspath(os.path.dirname(__file__))
 
 def pango_escape(message):
     assert isinstance(message, str)
@@ -50,13 +47,14 @@ def humanize_time(td):
     return '%id %ih' % (seconds//60//60//24, seconds//60//60%24)
   
 
-class DeviceMonitor(threading.Thread):
+class DeviceMonitor(object):
+    # dbus signals are delivered through the default glib main loop that Gtk.main()
+    # runs, so callbacks run on the gtk thread. Running a second main loop on its own
+    # thread made that thread dispatch gtk callbacks too, which crashed gtk.
     def __init__(self):
-        super().__init__()
-        DBusGMainLoop(set_as_default=True)
         self.device_add_callback = []
         self.device_rem_callback = []
-        self.daemon = True
+        self.started = False
 
     def addCallback(self, device_add_callback, device_remove_callback):
         self.device_add_callback.append(device_add_callback)
@@ -71,29 +69,34 @@ class DeviceMonitor(threading.Thread):
 
     def dbus_object_add(self, *args):
         logging.info('dbus-monitor: device added')
-        for callback in self.device_add_callback:
+        # copy, a callback may unregister itself
+        for callback in list(self.device_add_callback):
             callback()
 
     def dbus_object_rem(self, *args):
         logging.info('dbus-monitor: device removed')
-        for callback in self.device_rem_callback:
+        for callback in list(self.device_rem_callback):
             callback()
 
-    def run(self):
+    def start(self):
+        if self.started:
+            return
         logging.info('starting dbus-monitor...')
-        time.sleep(1)     # wait for x session connection to be established
-        system_bus = dbus.SystemBus()
+        DBusGMainLoop(set_as_default=True)
+        try:
+            system_bus = dbus.SystemBus()
+        except dbus.exceptions.DBusException as e:
+            logging.warning('no system bus, drive changes will not be detected: %s', e)
+            return
         system_bus.add_signal_receiver(self.dbus_object_add, 'InterfacesAdded', 'org.freedesktop.DBus.ObjectManager')
         system_bus.add_signal_receiver(self.dbus_object_rem, 'InterfacesRemoved', 'org.freedesktop.DBus.ObjectManager')
-        loop = GObject.MainLoop()
-        loop.run()
+        self.started = True
 
-device_monitor_thread = DeviceMonitor()
+device_monitor = DeviceMonitor()
 
 def register_device_added_removed_callback(add_callback, rem_callback):
-    device_monitor_thread.addCallback(add_callback, rem_callback)
-    if not device_monitor_thread.is_alive():
-        device_monitor_thread.start()
+    device_monitor.addCallback(add_callback, rem_callback)
+    device_monitor.start()
 
 def unregister_device_added_removed_callback(add_callback, rem_callback):
-    device_monitor_thread.remCallback(add_callback, rem_callback)
+    device_monitor.remCallback(add_callback, rem_callback)

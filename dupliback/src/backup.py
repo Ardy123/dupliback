@@ -194,33 +194,28 @@ def check_password(password, password_hash):
     # backups created before this change stored an unsalted md5 hash
     return hmac.compare_digest(hashlib.md5(password.encode('utf-8')).hexdigest(), password_hash)
 
+def get_file_size(filepath):
+    try:
+        return os.lstat(filepath).st_size
+    except OSError as e:
+        logging.debug(e)
+        return -1
+
 def get_large_files(path, max_bytes):
-    large_files = []
-    for dirpath, dirnames, filenames in os.walk(path):
-        for filename in filenames:
-            filepath = os.path.join(dirpath, filename)
-            try:
-                if os.lstat(filepath).st_size > max_bytes:
-                    large_files.append(filepath)
-            except OSError as e:
-                logging.debug(e)
-    return large_files
+    # walks the tree lazily so a large source is never listed into memory at once
+    filepaths = (os.path.join(dirpath, filename) for dirpath, dirnames, filenames in os.walk(path) for filename in filenames)
+    return (filepath for filepath in filepaths if get_file_size(filepath) > max_bytes)
 
 def gen_exclusionCmd( preferences, path ):
-    exclusion_list = []
-    for preference, value in preferences.items():
-        if value and preference in settings.FILEEXT_EXCLUDE_MAP:
-            for file_extension in settings.FILEEXT_EXCLUDE_MAP[preference]:
-                exclusion_list.extend(['--exclude', file_extension])
+    patterns = [pattern for preference, value in preferences.items() if value and preference in settings.FILEEXT_EXCLUDE_MAP
+                for pattern in settings.FILEEXT_EXCLUDE_MAP[preference]]
     # custom filters are separated by ':', a literal ':' is escaped as '\:'
-    for file_filter in re.split(r'(?<!\\):', preferences['exclude_filters']):
-        if file_filter:
-            exclusion_list.extend(['--exclude', file_filter.replace('\\:', ':')])
+    patterns += [file_filter.replace('\\:', ':') for file_filter in re.split(r'(?<!\\):', preferences['exclude_filters']) if file_filter]
+    exclusion_list = [arg for pattern in patterns for arg in ('--exclude', pattern)]
     # duplicity has no file size filter, so exclude each large file by name
     if preferences['exclude_filesize']:
         max_bytes = preferences['exclude_filesize'] * 1024*1024*1024
-        for filepath in get_large_files(path, max_bytes):
-            exclusion_list.extend(['--exclude-regexp', '^%s$' % re.escape(filepath)])
+        exclusion_list += [arg for filepath in get_large_files(path, max_bytes) for arg in ('--exclude-regexp', '^%s$' % re.escape(filepath))]
     return exclusion_list
 
 

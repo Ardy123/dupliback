@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+# build_deb.sh / build_rpm.sh output
+/debian/
+/dupli.back-*.deb
+/rpmbuild/
+/dupli.back-*.rpm
+# written into packages by build_*.sh, never into the source tree
+dupliback/src/build_version.py
