@@ -237,14 +237,12 @@ def init_backup(uuid, host, path, password):
         launch_error("Backup Already Exists!")
         return False
     # write config info
-    f = open(os.path.join(duplicity_dir, PROPERTIES_FILE), 'wb')
     o = {'uuid':uuid,
          'host':host,
          'path':path,
          'version':settings.PROGRAM_VERSION,
          'password': gen_passwordEncrypt(password)}
-    pickle.dump(o,f)
-    f.close()
+    save_properties(uuid, host, path, o)
     # save default preferences
     preferences = get_preferences(uuid, host, path)
     if not password:
@@ -276,6 +274,38 @@ def get_properties(uuid, host, path):
         logging.error(e)
         return {}
     return o
+
+
+def save_properties(uuid, host, path, properties):
+    # backups are only discovered through this file, so write it to a temporary
+    # file first rather than risk truncating it if the drive is pulled mid write
+    duplicity_dir = get_backupPath(uuid, host, path)
+    tmp_fn = os.path.join(duplicity_dir, PROPERTIES_FILE + '.tmp')
+    try:
+        with open(tmp_fn, 'wb') as f:
+            pickle.dump(properties, f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_fn, os.path.join(duplicity_dir, PROPERTIES_FILE))
+    except Exception as e:
+        logging.error(e)
+        return False
+    return True
+
+
+def upgrade_password_hash(uuid, host, path, password):
+    # replace a legacy unsalted md5 hash once the user has proven they know the password
+    properties = get_properties(uuid, host, path)
+    password_hash = properties.get('password', '')
+    if not password_hash or password_hash.startswith('pbkdf2_sha256$'):
+        return False
+    if not check_password(password, password_hash):
+        return False
+    properties['password'] = gen_passwordEncrypt(password)
+    if not save_properties(uuid, host, path, properties):
+        return False
+    logging.info('upgraded password hash for %s', path)
+    return True
 
 
 def get_preferences(uuid, host, path):

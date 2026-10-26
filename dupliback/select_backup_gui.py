@@ -28,6 +28,8 @@ class GUI(object):
             uuid = model.get_value(entry, 3)
             host = model.get_value(entry, 4)
             path = model.get_value(entry, 5)
+            if password:
+                backup.upgrade_password_hash(uuid, host, path, password)
             self.register_gui(manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password))
         self.close()
 

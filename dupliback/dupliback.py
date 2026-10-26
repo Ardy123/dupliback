@@ -38,6 +38,7 @@ def run_backup(uuid, path, host=None):
     if not backup.check_password(password, backup.get_properties(uuid, host, path).get('password', '')):
       print('---=== skipped backup (wrong or missing password):', uuid, path, '===---')
       return
+    backup.upgrade_password_hash(uuid, host, path, password)
   print('---=== starting backup:', uuid, path, '===---')
   try: backup.backup(uuid, host, path, password)
   except: traceback.print_exc()
