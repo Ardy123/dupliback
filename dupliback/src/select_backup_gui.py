@@ -1,3 +1,5 @@
+# util first, it pins Gtk to 3.0
+import util
 from gi.repository import Gtk, GdkPixbuf
 
 import backup
@@ -5,7 +7,6 @@ import create_backup_gui
 import manage_backup_gui
 import password_managment
 import backup_progress_gui
-import util
 import logging
 
 
