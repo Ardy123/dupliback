@@ -27,9 +27,9 @@ jobs:
 
       - name: Run tests with coverage
         working-directory: dupliback
-        # xvfb provides a display so the GUI tests run and count towards coverage;
-        # .coveragerc fails the run below 80%
-        run: xvfb-run -a .venv/bin/python -m pytest --cov --cov-report=term-missing
+        # the tests start their own Xvfb display for the GUI tests, which count
+        # towards coverage; .coveragerc fails the run below 80%
+        run: .venv/bin/python -m pytest --cov --cov-report=term-missing
 
   packages:
     name: packages

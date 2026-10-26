@@ -1,7 +1,10 @@
+import atexit
 import hashlib
 import os
 import pickle
 import re
+import shutil
+import subprocess
 import sys
 import time
 
@@ -9,6 +12,37 @@ import pytest
 
 SRC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src')
 sys.path.insert(0, SRC_DIR)
+
+GUI_TESTS_ON_DESKTOP = bool(os.environ.get('DUPLIBACK_GUI_TESTS_ON_DESKTOP'))
+
+
+def start_virtual_display():
+    # The GUI tests open and close hundreds of real windows. On a real desktop that
+    # has crashed the window manager (KWin), so they run on a private Xvfb server
+    # instead, and are skipped when Xvfb is not installed. This has to happen
+    # before Gtk is imported, which is when Gtk connects to the display.
+    if GUI_TESTS_ON_DESKTOP:
+        return
+    os.environ.pop('WAYLAND_DISPLAY', None)
+    os.environ['GDK_BACKEND'] = 'x11'
+    xvfb = shutil.which('Xvfb')
+    display = None
+    if xvfb:
+        read_fd, write_fd = os.pipe()
+        # -displayfd picks a free display and writes its number once the server is ready
+        server = subprocess.Popen([xvfb, '-displayfd', str(write_fd), '-screen', '0', '1280x1024x24', '-nolisten', 'tcp'],
+                                  pass_fds=[write_fd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        os.close(write_fd)
+        with os.fdopen(read_fd) as ready:
+            display = ready.readline().strip()
+        atexit.register(server.terminate)
+    if display:
+        os.environ['DISPLAY'] = ':' + display
+    else:
+        os.environ.pop('DISPLAY', None)
+
+
+start_virtual_display()
 
 import backup
 import util
@@ -122,7 +156,9 @@ def status_count(label, text):
 
 
 HAS_DISPLAY = bool(os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'))
-requires_display = pytest.mark.skipif(not HAS_DISPLAY, reason='needs a display')
+NO_DISPLAY_REASON = ('GUI tests need Xvfb (apt install xvfb); set DUPLIBACK_GUI_TESTS_ON_DESKTOP=1 '
+                     'to run them on your desktop instead')
+requires_display = pytest.mark.skipif(not HAS_DISPLAY, reason=NO_DISPLAY_REASON)
 
 
 def run_in_main_loop(func):
@@ -180,7 +216,7 @@ class GuiEnv(object):
 @pytest.fixture
 def gui_env(monkeypatch):
     if not HAS_DISPLAY:
-        pytest.skip('needs a display')
+        pytest.skip(NO_DISPLAY_REASON)
     from gi.repository import Gtk
     import backup_progress_gui
     env = GuiEnv()
