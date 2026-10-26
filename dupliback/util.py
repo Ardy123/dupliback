@@ -1,4 +1,5 @@
 import os
+import subprocess
 import sys
 import threading
 import logging
@@ -12,10 +13,6 @@ gi.require_version('Gtk', '3.0')
 
 RUN_FROM_DIR = os.path.abspath(os.path.dirname(sys.argv[0]))
 
-def system_escape(string):
-    message = "\ ".join(string.split(" "))    
-    return message
-
 def pango_escape(message):
     assert isinstance(message, str)
     message = "&amp;".join(message.split("&"))
@@ -25,7 +22,7 @@ def pango_escape(message):
 
 
 def open_file(fn):
-    os.system( 'xdg-open "%s"' % fn )
+    subprocess.Popen(['xdg-open', fn])
   
   
 def humanize_bytes(bytes):
@@ -43,14 +40,14 @@ def humanize_bytes(bytes):
 
 
 def humanize_time(td):
-    seconds = int(td.seconds)
+    seconds = int(td.total_seconds())
     if seconds < 60:
         return '%is' % seconds
     elif seconds < 60*60:
         return '%im %is' % (seconds//60, seconds%60)
     elif seconds < 60*60*24:
-        return '%ih %.1fm' % (seconds//60//60, seconds/60)
-    return '%id %.1fh' % (seconds//60//60//24, seconds/60/60)
+        return '%ih %im' % (seconds//60//60, seconds//60%60)
+    return '%id %ih' % (seconds//60//60//24, seconds//60//60%24)
   
 
 class DeviceMonitor(threading.Thread):
@@ -66,8 +63,11 @@ class DeviceMonitor(threading.Thread):
         self.device_rem_callback.append(device_remove_callback)
 
     def remCallback(self, device_add_callback, device_remove_callback):
-        self.device_add_callback.remove(device_add_callback)
-        self.device_rem_callback.remove(device_remove_callback)
+        # windows may be closed more than once, so ignore callbacks that are already gone
+        if device_add_callback in self.device_add_callback:
+            self.device_add_callback.remove(device_add_callback)
+        if device_remove_callback in self.device_rem_callback:
+            self.device_rem_callback.remove(device_remove_callback)
 
     def dbus_object_add(self, *args):
         logging.info('dbus-monitor: device added')

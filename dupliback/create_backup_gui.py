@@ -12,6 +12,7 @@ import logging
 class GUI(object):
 
 	def close(self, a=None, b=None):
+		util.unregister_device_added_removed_callback(self.refresh_device_list, self.refresh_device_list)
 		self.main_window.close()
 		self.unregister_gui(self)
 		return
@@ -35,8 +36,9 @@ class GUI(object):
 				path = chooserWidget.get_filename()
 			else:
 				path = path[7:]
-			logging.debug('opening... drive:%s'%uuid, 'host:%s'%host, 'path:%s'%path)
-			backup.init_backup(uuid, host, path, password)
+			logging.debug('opening... drive:%s host:%s path:%s', uuid, host, path)
+			if not backup.init_backup(uuid, host, path, password):
+				return
 			self.register_gui( manage_backup_gui.GUI(self.register_gui, self.unregister_gui, uuid, host, path, password) )
 			self.close()
 		else:
@@ -98,7 +100,7 @@ class GUI(object):
 		treeview_backups_widget.append_column( Gtk.TreeViewColumn('', renderer, markup=1) )
 		treeview_backups_widget.set_headers_visible(False)
 		treeview_backups_widget.set_model(treeview_backups_model)
-		util.register_device_added_removed_callback(self.refresh_device_list)
+		util.register_device_added_removed_callback(self.refresh_device_list, self.refresh_device_list)
 		self.refresh_device_list()
 		
 		self.main_window.show()
