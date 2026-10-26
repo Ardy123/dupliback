@@ -361,7 +361,7 @@ def backup(uuid, host, path, password, report=None):
     elif due and report:
         report('A new full backup is due (the last one is over a year old), '
                'but it may not fit on the drive, so an incremental backup '
-               'was made. Delete or merge old moments to free space.')
+               'was made. Prune or merge old moments to free space.')
     return run_duplicity(password, exclusions, operands)
 
 

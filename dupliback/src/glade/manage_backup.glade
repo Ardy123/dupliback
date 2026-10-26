@@ -65,13 +65,13 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToolButton" id="toolbutton_delete">
+              <object class="GtkToolButton" id="toolbutton_prune">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="has_tooltip">True</property>
-                <property name="tooltip_text" translatable="yes">delete moments, or merge consecutive ones, to free space</property>
+                <property name="tooltip_text" translatable="yes">prune moments, or merge consecutive ones, to free space</property>
                 <property name="is_important">True</property>
-                <property name="label" translatable="yes">Delete</property>
+                <property name="label" translatable="yes">Prune</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-delete</property>
               </object>

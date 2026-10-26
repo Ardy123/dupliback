@@ -104,7 +104,7 @@ class Plan(object):
         if not self.keep or not self.keep <= all_ends:
             raise MergeError('at least one existing moment must be kept')
         if self.keep == all_ends:
-            raise MergeError('nothing to delete or merge')
+            raise MergeError('nothing to prune or merge')
         self.steps = [list(self._chain_steps(chain)) for chain in chains]
 
     def _chain_steps(self, chain):
@@ -146,10 +146,10 @@ def plan_rewrite(duplicity_dir, keep):
     return Plan(duplicity_dir, get_chains(duplicity_dir), keep)
 
 
-def plan_prune(duplicity_dir, delete):
-    # keep every moment except those ending at the epochs in delete
+def plan_prune(duplicity_dir, pruned):
+    # keep every moment except those ending at the epochs in pruned
     chains = get_chains(duplicity_dir)
-    keep = {m.end for m in moments(chains)} - set(delete)
+    keep = {m.end for m in moments(chains)} - set(pruned)
     return Plan(duplicity_dir, chains, keep)
 
 

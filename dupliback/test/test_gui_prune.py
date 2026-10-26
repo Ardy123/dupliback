@@ -1,4 +1,4 @@
-# the Delete screen and its place in the manage window, on real duplicity
+# the Prune screen and its place in the manage window, on real duplicity
 import os
 import shutil
 
@@ -47,13 +47,13 @@ def pick(screen, *indexes):
         screen.toggled(None, str(index))
 
 
-def test_delete_button_follows_export(manage):
+def test_prune_button_follows_export(manage):
     from gi.repository import Gtk
     gui, epochs = manage
     toolbar = gui.gtkbuilder.get_object('toolbar1')
     labels = [child.get_label() for child in toolbar.get_children()
               if isinstance(child, Gtk.ToolButton)]
-    assert labels[labels.index('Export') + 1] == 'Delete'
+    assert labels[labels.index('Export') + 1] == 'Prune'
 
 
 def test_screen_lists_moments_and_enables_actions(manage, gui_env):
@@ -63,23 +63,23 @@ def test_screen_lists_moments_and_enables_actions(manage, gui_env):
     assert [row[4] for row in screen.model] == epochs
     assert [row[2] for row in screen.model] == [
         'full', 'incremental', 'incremental', 'incremental']
-    assert not get('button_delete').get_sensitive()
+    assert not get('button_prune').get_sensitive()
     pick(screen, 1)
-    assert get('button_delete').get_sensitive()
+    assert get('button_prune').get_sensitive()
     assert not get('button_merge').get_sensitive()
     pick(screen, 3)
     assert not get('button_merge').get_sensitive()
     pick(screen, 2)
     assert get('button_merge').get_sensitive()
     pick(screen, 0)
-    assert not get('button_delete').get_sensitive()
+    assert not get('button_prune').get_sensitive()
     assert '4 of 4' in get('label_summary').get_text()
     screen.close()
 
 
 @pytest.mark.parametrize('action, indexes, remaining', [
-    ('delete', [1, 2], 2), ('squash', [0, 1, 2], 2)])
-def test_delete_and_merge_through_the_screen(manage, gui_env, action,
+    ('prune', [1, 2], 2), ('squash', [0, 1, 2], 2)])
+def test_prune_and_merge_through_the_screen(manage, gui_env, action,
                                              indexes, remaining):
     from gi.repository import Gtk
     gui, epochs = manage
@@ -103,7 +103,7 @@ def test_declining_the_second_confirmation_changes_nothing(manage, gui_env,
     screen = open_screen(gui, gui_env)
     files = sorted(os.listdir(screen.duplicity_dir))
     pick(screen, 1)
-    screen.delete()
+    screen.prune()
     gui_env.wait_for_takedowns(2, timeout=300)
     assert sorted(os.listdir(screen.duplicity_dir)) == files
     assert revisions(gui) == 4
@@ -121,9 +121,9 @@ def test_foreign_files_stop_before_anything_runs(manage, gui_env,
         real(*args), foreign_owned=3))
     screen = open_screen(gui, gui_env)
     pick(screen, 1)
-    screen.delete()
+    screen.prune()
     gui_env.wait_for_takedowns(1, timeout=120)
-    assert shown == ['Delete or merge stopped']
+    assert shown == ['Prune or merge stopped']
     assert revisions(gui) == 4
 
 
@@ -137,7 +137,7 @@ def test_low_space_asks_before_deleting_first(manage, gui_env, monkeypatch):
     screen = open_screen(gui, gui_env)
     pick(screen, 1)
     gui_env.dialog_response = Gtk.ResponseType.YES
-    screen.delete()
+    screen.prune()
     # estimate, rebuild, apply (no room), apply deleting first
     gui_env.wait_for_takedowns(4, timeout=300)
     assert revisions(gui) == 3

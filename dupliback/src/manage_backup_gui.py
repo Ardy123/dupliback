@@ -288,7 +288,7 @@ class GUI(object):
         get('toolbutton_preferences').connect(
             'clicked', lambda x: self.open_preferences() )
         get('toolbutton_about').connect('clicked', lambda x: self.open_about() )
-        get('toolbutton_delete').connect('clicked', lambda x: self.open_prune())
+        get('toolbutton_prune').connect('clicked', lambda x: self.open_prune())
 
         # revision list
         treeview_revisions_widget = get('treeview_revisions')

@@ -1,4 +1,4 @@
-# the Delete screen: delete moments, or merge consecutive ones into the newest
+# the Prune screen: prune moments, or merge consecutive ones into the newest
 # util first, it pins Gtk to 3.0
 import util
 from gi.repository import Gtk, GObject
@@ -28,7 +28,7 @@ def _guarded(work):
 
 def _show_error(text):
     util.message_dialog(Gtk.MessageType.ERROR, Gtk.ButtonsType.CLOSE,
-                        'Delete or merge stopped', text)
+                        'Prune or merge stopped', text)
 
 
 class GUI(object):
@@ -47,9 +47,9 @@ class GUI(object):
         self.main_window = get('dialog')
         self.main_window.connect('delete-event', self.close)
         self.main_window.set_transient_for(manage.main_window)
-        util.setup_window(self.main_window, 'Delete or Merge Moments')
+        util.setup_window(self.main_window, 'Prune or Merge Moments')
         get('button_cancel').connect('clicked', self.close)
-        get('button_delete').connect('clicked', lambda b: self.delete())
+        get('button_prune').connect('clicked', lambda b: self.prune())
         get('button_merge').connect('clicked', lambda b: self.squash())
         # picked, date, type, size, end epoch
         self.model = Gtk.ListStore(bool, str, str, str, GObject.TYPE_INT64)
@@ -84,13 +84,13 @@ class GUI(object):
         indexes = [ends.index(end) for end in picked]
         consecutive = indexes == list(range(indexes[0], indexes[-1] + 1)
                                       ) if indexes else False
-        get('button_delete').set_sensitive(0 < len(picked) < len(ends))
+        get('button_prune').set_sensitive(0 < len(picked) < len(ends))
         get('button_merge').set_sensitive(len(picked) >= 2 and consecutive)
         get('label_summary').set_text(
             '%d of %d moments selected.' % (len(picked), len(ends))
             if picked else 'No moments selected.')
 
-    def delete(self):
+    def prune(self):
         self.start(merge.plan_prune(self.duplicity_dir, self.picked()))
 
     def squash(self):
@@ -132,7 +132,7 @@ class GUI(object):
                    util.humanize_bytes(estimate['staging_needed'])))
         if Gtk.ResponseType.YES != util.message_dialog(
                 Gtk.MessageType.WARNING, Gtk.ButtonsType.YES_NO,
-                'Delete or merge moments?', text):
+                'Prune or merge moments?', text):
             return
         self.manage.run_task(
             Gtk.STOCK_FIND, 'rebuilding moments', 'Rebuilding, Please Wait',
@@ -181,7 +181,7 @@ class GUI(object):
                        merge.staging_dir(self.duplicity_dir)))
             if Gtk.ResponseType.YES == util.message_dialog(
                     Gtk.MessageType.WARNING, Gtk.ButtonsType.YES_NO,
-                    'Delete the old moments first?', text):
+                    'Remove the old moments first?', text):
                 return self.commit(True)
             merge.undo_rewrite(self.duplicity_dir)
             return
