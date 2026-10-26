@@ -12,7 +12,7 @@
     <property name="secondary_text" translatable="yes">These moments will no longer be restorable:
 {dropped}
 
-Up to {freed} can be freed. {rebuilt} moment(s) will be rebuilt in a temporary folder and checked, which takes about {hours:.1f} hours; the files you back up are not touched. The backup stays unchanged until you confirm again.</property>
+Up to {freed} can be freed. {rebuilt} moment(s) will be rebuilt in a temporary folder and checked, which takes about {hours:.1f} hours; the files you back up are not touched. The backup is changed only once the rebuilt moments pass the checks.</property>
     <child internal-child="message_area">
       <object class="GtkBox">
         <property name="can_focus">False</property>
@@ -37,14 +37,14 @@ Up to {freed} can be freed. {rebuilt} moment(s) will be rebuilt in a temporary f
       </object>
     </child>
   </object>
-  <object class="GtkMessageDialog" id="dialog_apply">
+  <object class="GtkMessageDialog" id="dialog_done">
     <property name="can_focus">False</property>
     <property name="title">dupli.back</property>
     <property name="window_position">center</property>
-    <property name="message_type">question</property>
-    <property name="buttons">yes-no</property>
-    <property name="text" translatable="yes">Apply the changes?</property>
-    <property name="secondary_text" translatable="yes">The rewritten moments are rebuilt and checked. Applying them frees {freed} on the drive.</property>
+    <property name="message_type">info</property>
+    <property name="buttons">close</property>
+    <property name="text" translatable="yes">Pruning or merging finished</property>
+    <property name="secondary_text" translatable="yes">{freed} was freed on the drive.</property>
   </object>
   <object class="GtkMessageDialog" id="dialog_delete_first">
     <property name="can_focus">False</property>

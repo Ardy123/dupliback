@@ -87,21 +87,26 @@ def test_prune_and_merge_through_the_screen(manage, gui_env, action,
     pick(screen, *indexes)
     gui_env.dialog_response = Gtk.ResponseType.YES
     getattr(screen, action)()
-    # estimate, rebuild, apply
+    # estimate, rebuild, apply; asked once, then told what was freed
     gui_env.wait_for_takedowns(3, timeout=300)
     assert revisions(gui) == remaining
     assert not merge.get_journal(screen.duplicity_dir)
+    titles = [texts[0] for texts in gui_env.messages]
+    assert titles == ['Prune or merge moments?',
+                      'Pruning or merging finished']
 
 
-def test_declining_the_second_confirmation_changes_nothing(manage, gui_env):
+def test_declining_the_confirmation_changes_nothing(manage, gui_env):
     from gi.repository import Gtk
     gui, epochs = manage
-    gui_env.answers = [Gtk.ResponseType.YES, Gtk.ResponseType.NO]
+    gui_env.dialog_response = Gtk.ResponseType.NO
     screen = open_screen(gui, gui_env)
     files = sorted(os.listdir(screen.duplicity_dir))
     pick(screen, 1)
     screen.prune()
-    gui_env.wait_for_takedowns(2, timeout=300)
+    gui_env.wait_for_takedowns(1, timeout=300)
+    wait_until(lambda: True)
+    assert len(gui_env.messages) == 1
     assert sorted(os.listdir(screen.duplicity_dir)) == files
     assert revisions(gui) == 4
 

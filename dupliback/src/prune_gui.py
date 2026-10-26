@@ -165,17 +165,14 @@ class RewriteFlow(object):
             return prepare(plan, password, lambda step, **fields: report(
                 texts[step].format(**fields)), thorough)
         _task(self.manage, Gtk.STOCK_FIND, self.doing, _guarded(work),
-              lambda result: self.confirm_commit(plan, result), reports=True)
+              lambda result: self.prepared(plan, result), reports=True)
 
-    def confirm_commit(self, plan, result):
+    def prepared(self, plan, result):
+        # rebuilt and checked: applied without asking again
         status, journal = result
         if status == 'error':
             return _show_error(journal)
-        if Gtk.ResponseType.YES != util.run_message(
-                'dialog_apply',
-                freed=util.humanize_bytes(merge.freed_bytes(plan, journal))):
-            merge.undo_rewrite(self.duplicity_dir)
-            return
+        self.freed = merge.freed_bytes(plan, journal)
         self.commit(False)
 
     def commit(self, delete_first):
@@ -204,6 +201,7 @@ class RewriteFlow(object):
         if status == 'error':
             return _show_error(value)
         self.manage.update_revisions()
+        util.run_message('dialog_done', freed=util.humanize_bytes(self.freed))
 
 
 def offer_resume(manage):
