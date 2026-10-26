@@ -1,18 +1,89 @@
+import atexit
+import hashlib
 import os
+import pickle
+import re
+import shutil
+import subprocess
 import sys
+import time
 
 import pytest
 
 SRC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'src')
 sys.path.insert(0, SRC_DIR)
 
+GUI_TESTS_ON_DESKTOP = bool(os.environ.get('DUPLIBACK_GUI_TESTS_ON_DESKTOP'))
+
+
+def start_virtual_display():
+    # The GUI tests open and close hundreds of real windows. On a real desktop that
+    # has crashed the window manager (KWin), so they run on a private Xvfb server
+    # instead, and are skipped when Xvfb is not installed. This has to happen
+    # before Gtk is imported, which is when Gtk connects to the display.
+    if GUI_TESTS_ON_DESKTOP:
+        return
+    os.environ.pop('WAYLAND_DISPLAY', None)
+    os.environ['GDK_BACKEND'] = 'x11'
+    xvfb = shutil.which('Xvfb')
+    display = None
+    if xvfb:
+        read_fd, write_fd = os.pipe()
+        # -displayfd picks a free display and writes its number once the server is ready
+        server = subprocess.Popen([xvfb, '-displayfd', str(write_fd), '-screen', '0', '1280x1024x24', '-nolisten', 'tcp'],
+                                  pass_fds=[write_fd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        os.close(write_fd)
+        with os.fdopen(read_fd) as ready:
+            display = ready.readline().strip()
+        atexit.register(server.terminate)
+    if display:
+        os.environ['DISPLAY'] = ':' + display
+    else:
+        os.environ.pop('DISPLAY', None)
+
+
+start_virtual_display()
+
 import backup
 import util
+
+PRODUCTION_HASH_ITERATIONS = backup.PASSWORD_HASH_ITERATIONS
 
 
 @pytest.fixture(autouse=True)
 def no_error_dialogs(monkeypatch):
     monkeypatch.setattr(backup, 'SHOW_ERROR_DIALOGS', False)
+
+
+@pytest.fixture(autouse=True)
+def fast_password_hashing(monkeypatch):
+    # the iteration count is stored in each hash, so checking still works; it is
+    # only lowered to keep the many password protected test backups fast
+    monkeypatch.setattr(backup, 'PASSWORD_HASH_ITERATIONS', 1000)
+
+
+def write(path, content):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+        f.write(content)
+
+
+def read(path):
+    with open(path) as f:
+        return f.read()
+
+
+def write_legacy_hash(repo, password):
+    # stores the password as an unsalted md5 hash, as backups made before 0.5.0 did
+    properties = backup.get_properties(*repo.args)
+    properties['password'] = hashlib.md5(password.encode('utf-8')).hexdigest()
+    with open(os.path.join(backup.get_backupPath(*repo.args), backup.PROPERTIES_FILE), 'wb') as f:
+        pickle.dump(properties, f)
+    return properties['password']
+
+
+def stored_hash(repo):
+    return backup.get_properties(*repo.args)['password']
 
 
 @pytest.fixture
@@ -50,6 +121,17 @@ def repo(fake_drive, source_dir):
     return Repo('TEST-UUID', backup.get_hostname(), source_dir)
 
 
+@pytest.fixture
+def protected(repo):
+    # a password protected repo with one backup, needs duplicity
+    write(os.path.join(repo.path, 'my docs', 'file with spaces.txt'), 'v1')
+    write(os.path.join(repo.path, 'small.bin'), 'x')
+    pin_dir_mtimes(repo.path)
+    assert backup.init_backup(*repo.args, 'pw')
+    assert backup.backup(*repo.args, 'pw') == 0
+    return repo
+
+
 # duplicity decides what changed by comparing mtimes to the second, so a file or
 # directory touched in the same second as a backup may or may not count as
 # changed. Tests that check change counts pin mtimes to make them exact.
@@ -68,14 +150,15 @@ def mark_modified(path):
 
 def status_count(label, text):
     # 'New Files: 2 - Size of New Files: 141 Bytes' -> 2
-    import re
     match = re.match(r'%s: (\d+)' % label, text)
     assert match, '%r does not start with %r' % (text, label)
     return int(match.group(1))
 
 
 HAS_DISPLAY = bool(os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'))
-requires_display = pytest.mark.skipif(not HAS_DISPLAY, reason='needs a display')
+NO_DISPLAY_REASON = ('GUI tests need Xvfb (apt install xvfb); set DUPLIBACK_GUI_TESTS_ON_DESKTOP=1 '
+                     'to run them on your desktop instead')
+requires_display = pytest.mark.skipif(not HAS_DISPLAY, reason=NO_DISPLAY_REASON)
 
 
 def run_in_main_loop(func):
@@ -98,7 +181,6 @@ def run_in_main_loop(func):
 
 def wait_until(predicate, timeout=60):
     # pumps gtk events until predicate() is true, so worker threads can hand results back
-    import time
     from gi.repository import Gtk
     deadline = time.monotonic() + timeout
     while not predicate():
@@ -134,7 +216,7 @@ class GuiEnv(object):
 @pytest.fixture
 def gui_env(monkeypatch):
     if not HAS_DISPLAY:
-        pytest.skip('needs a display')
+        pytest.skip(NO_DISPLAY_REASON)
     from gi.repository import Gtk
     import backup_progress_gui
     env = GuiEnv()

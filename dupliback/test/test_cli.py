@@ -1,6 +1,4 @@
-import hashlib
 import os
-import pickle
 import shutil
 import subprocess
 import sys
@@ -9,7 +7,7 @@ import pytest
 
 import backup
 import dupliback
-from conftest import SRC_DIR
+from conftest import SRC_DIR, stored_hash, write, write_legacy_hash
 
 
 def test_unknown_drive_is_skipped_without_dialogs():
@@ -21,15 +19,11 @@ def test_unknown_drive_is_skipped_without_dialogs():
 @pytest.mark.skipif(shutil.which('duplicity') is None, reason='duplicity is not installed')
 @pytest.mark.parametrize('passphrase, upgraded', [('pw', True), ('nope', False)])
 def test_cli_backup_checks_password_and_upgrades_hash(repo, monkeypatch, passphrase, upgraded):
-    with open(os.path.join(repo.path, 'a'), 'w') as f:
-        f.write('a')
+    write(os.path.join(repo.path, 'a'), 'a')
     backup.init_backup(*repo.args, 'pw')
-    properties = backup.get_properties(*repo.args)
-    properties['password'] = hashlib.md5(b'pw').hexdigest()
-    with open(os.path.join(backup.get_backupPath(*repo.args), backup.PROPERTIES_FILE), 'wb') as f:
-        pickle.dump(properties, f)
+    write_legacy_hash(repo, 'pw')
     monkeypatch.setenv('PASSPHRASE', passphrase)
     dupliback.run_backup(repo.uuid, repo.path, repo.host)
-    stored = backup.get_properties(*repo.args)['password']
+    stored = stored_hash(repo)
     assert stored.startswith('pbkdf2_sha256$') == upgraded
     assert bool(backup.get_revisions(*repo.args)) == upgraded

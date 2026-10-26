@@ -1,283 +1,197 @@
 import datetime
-import threading
 import os
-import logging
-from gi.repository import Gtk, GObject, Gdk, GLib, GdkPixbuf
+from gi.repository import Gtk, GObject, GLib, GdkPixbuf
 import backup
-import settings
 import util
-import repeat_timer
 import manage_backup_preferences_gui
 import backup_progress_gui
 import backup_status_gui
 import about_gui
 
 
+class FileTreeBuilder(object):
+    # builds the file tree of a revision from duplicity's listing, which lists each
+    # directory before its contents
+    def __init__(self, model):
+        self.model = model
+        self.currPath = [['', None]]
+
+    def findPath(self, pathStr):
+        # find the delta in the curr path and the desired path
+        dirSplit = pathStr.split('/')
+        if dirSplit[0] != '': dirSplit.insert( 0, '' )
+        # unwind cached path until it matches desired path
+        del self.currPath[len(dirSplit):]
+        for ndx, name in enumerate(dirSplit):
+            if len(self.currPath) > ndx and self.currPath[ndx][0] != name:
+                del self.currPath[ndx:]
+                break
+        # find adjusted path - because path will always be the last added path just find the last path and add it.
+        # name is the directory the loop stopped at
+        itr = self.currPath[-1][1]
+        if self.currPath[-1][0] != name:
+            itr = self.model.iter_nth_child( itr, self.model.iter_n_children( itr ) - 1)
+            self.currPath.append([name, itr])
+        return itr
+
+    def add(self, pathDateLst):
+        path, _, filename = pathDateLst[0].rpartition('/')
+        insert_itr = self.model.append(parent=self.findPath(path))
+        self.model[insert_itr] = [filename, pathDateLst[1]]
+
+
 class GUI(object):
 
     def close(self, a=None, b=None):
-        self.status_bar_thread.cancel()
+        GLib.source_remove(self.status_bar_timer)
         self.unregister_gui(self)
         self.main_window.destroy()
-    
+
+    def run_task(self, stock_icon, task_text, progress_msg, work, on_done=None, after=None):
+        # lists the task as running while work() runs in the background, see run_with_progress
+        tasks = self.gtkbuilder.get_object('running_tasks').get_model()
+        row = tasks.append((self.main_window.render_icon(stock_icon, Gtk.IconSize.MENU), util.pango_escape(task_text), datetime.datetime.now(), ''))
+        def done(result):
+            if on_done:
+                on_done(result)
+            tasks.remove(row)
+        backup_progress_gui.run_with_progress(self.register_gui, self.unregister_gui, self.main_window, progress_msg, work, done, after)
+
     def update_revisions(self):
-        revisions = backup.get_revisions(self.uuid, self.host, self.path)
-        treeview_revisions_widget = self.gtkbuilder.get_object('treeview_revisions')
-        treeview_revisions_model = treeview_revisions_widget.get_model()
+        self.show_revisions(backup.get_revisions(self.uuid, self.host, self.path))
+
+    def show_revisions(self, revisions):
+        treeview_revisions_model = self.gtkbuilder.get_object('treeview_revisions').get_model()
         treeview_revisions_model.clear()
         # update revisions, if no revisions exist, prompt user to run backup
-        if revisions:
-            for rev in revisions:
-                date = "%s %s/%s/%s %s" % (rev['day'],rev['month'],rev['dayOfMo'],rev['year'], rev['time'])
-                isoTime = "%s-%02d-%02dT%s" % (rev['year'],rev['month'],int(rev['dayOfMo']),rev['time'])
-                if rev == revisions[0] : type = 'epoch'
-                else: type = 'moment'
-                s = '[%s] %s\n<i>%s</i>' % ( type, util.pango_escape(date), util.pango_escape(rev['type']) )
-                treeview_revisions_model.append((s,isoTime))
-        else:
-            md = Gtk.MessageDialog(None, Gtk.DialogFlags.DESTROY_WITH_PARENT, Gtk.MessageType.INFO, Gtk.ButtonsType.CLOSE, 'Welcome to dupli.back!')
-            md.format_secondary_markup(
+        if not revisions:
+            util.message_dialog(Gtk.MessageType.INFO, Gtk.ButtonsType.CLOSE, 'Welcome to dupli.back!',
                 'This is a brand new (and currently empty) backup repository.  To fill it with data, please click the "backup" button in the upper-left corner.')
-            md.run()
-            md.destroy()
-        return
+        for n, rev in enumerate(revisions):
+            date = "%s %s/%s/%s %s" % (rev['day'],rev['month'],rev['dayOfMo'],rev['year'], rev['time'])
+            isoTime = "%s-%02d-%02dT%s" % (rev['year'],rev['month'],int(rev['dayOfMo']),rev['time'])
+            s = '[%s] %s\n<i>%s</i>' % ( 'epoch' if n == 0 else 'moment', util.pango_escape(date), util.pango_escape(rev['type']) )
+            treeview_revisions_model.append((s,isoTime))
 
-    def update_files(self,a=None):                         
+    def update_files(self, treeview_revisions=None):
         treeview_files_view = self.gtkbuilder.get_object('treeview_files')
         treeview_files_model = treeview_files_view.get_model()
-        treeview_files_model.clear()        
+        treeview_files_model.clear()
         treeview_files_model.append( None, [('loading files... (please wait)'),('')] )
         #clear the old tree view selection
         treeview_files_view.get_selection().unselect_all()
         # get files based on the rev selection
-        model, entry = a.get_selection().get_selected()
+        model, entry = treeview_revisions.get_selection().get_selected()
         if not entry:
             treeview_files_model.clear()
             return
-        self.gtkbuilder.get_object('toolbutton_export').set_sensitive( True )
-        self.gtkbuilder.get_object('toolbutton_restore').set_sensitive( True )
-        self.gtkbuilder.get_object('toolbutton_explore').set_sensitive( True )
-        rev = entry and model.get_value(entry, 1)
-        
-        icon = self.main_window.render_icon(Gtk.STOCK_FIND, Gtk.IconSize.MENU)
-        running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
-        i = running_tasks_model.append( ( icon, util.pango_escape('loading files for rev: '+self.path), datetime.datetime.now(), '' ) )
-        replacmentModel = Gtk.TreeStore( str, str )
-        gui = self
-            
-        class T:
-            def splitPathFilename(self, filepath):
-                # split out path from file 
-                ndx = filepath.rfind('/')
-                if ndx == -1:
-                    return ('', filepath)
-                else:
-                    return (filepath[:ndx],filepath[ndx + 1:])                            
-            def findPath(self, pathStr):
-                # find the delta in the curr path and the desired path
-                dirSplit = pathStr.split('/')
-                if dirSplit[0] != '': dirSplit.insert( 0, '' )
-                # unwind cached path until it matches desired path
-                del self.currPath[len(dirSplit):]
-                for ndx, dir in enumerate(dirSplit):
-                    try:
-                        if len(self.currPath) > ndx and self.currPath[ndx][0] != dir:
-                            del self.currPath[ndx:]                                                          
-                            break
-                    except IndexError as e:
-                        logging.debug(e)
-                        break                 
-                #find adjusted path - because path will always be the last added path just find the last path and add it
-                itr = self.currPath[-1][1]
-                if self.currPath[-1][0] != dir:                    
-                    itr = replacmentModel.iter_nth_child( itr, replacmentModel.iter_n_children( itr ) - 1)
-                    self.currPath.append([dir,itr]) 
-                return itr
-                
-            def callback(self, pathDateLst):
-                # split out path from file
-                path, file = self.splitPathFilename(pathDateLst[0])
-                # add item to tree
-                insert_itr = replacmentModel.append(parent=self.findPath(path))
-                replacmentModel[insert_itr] = [file, pathDateLst[1]]
+        for name in ('toolbutton_export', 'toolbutton_restore', 'toolbutton_explore'):
+            self.gtkbuilder.get_object(name).set_sensitive( True )
+        rev = model.get_value(entry, 1)
+        tree = FileTreeBuilder(Gtk.TreeStore( str, str ))
+        self.run_task(Gtk.STOCK_FIND, 'loading files for rev: '+self.path, 'Retrieving File List, Please Wait',
+                      lambda: backup.get_files_for_revision(self.uuid, self.host, self.path, rev, self.password, tree.add),
+                      lambda result: treeview_files_view.set_model(tree.model))
 
-            def run(self):
-                self.currPath=[['',None]]
-                backup.get_files_for_revision(gui.uuid, gui.host, gui.path, rev, gui.password, self.callback)
-                def ui_update():
-                    running_tasks_model.remove(i)
-                    treeview_files_view.set_model(replacmentModel)
-                    messageBox.takedownProgressBar()
-                GLib.idle_add(ui_update)
-
-        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving File List, Please Wait' )
-        messageBox.main_window.set_transient_for( self.main_window )
-        def thread_func(): (T()).run()
-        thread = threading.Thread(target = thread_func)
-        thread.start()
-
-    def restore_selection(self, widget, selection=None ):  
+    def restore_selection(self, widget, selection=None ):
         self.start_restore(selection)
-        return
-    
+
+    def popup_restore_menu(self, widget, event, label, restore_selected_rows):
+        if event.button != 3:
+            return False
+        selection = widget.get_selection().get_selected_rows()
+        if not selection[1]:
+            return False
+        menu = Gtk.Menu()
+        restoreSelection = Gtk.MenuItem(label)
+        restoreSelection.connect("activate", self.restore_selection, selection if restore_selected_rows else None)
+        menu.append( restoreSelection )
+        restoreSelection.show()
+        menu.popup( None, None, None, event.button, event.time )
+        return True
+
     def fileview_mouse_notify(self, widget, event):
-        if event.button == 3:            
-            selection =  widget.get_selection().get_selected_rows()
-            if selection[1] != []:
-                # create menu
-                menu = Gtk.Menu()  
-                restoreSelection = Gtk.MenuItem("Restore Selection")
-                restoreSelection.connect("activate", self.restore_selection, selection )
-                menu.append( restoreSelection )                        
-                # display menu
-                restoreSelection.show()
-                menu.popup( None, None, None, event.button, event.time )
-                return True
-        return False
+        return self.popup_restore_menu(widget, event, "Restore Selection", True)
 
     def revview_mouse_notify(self, widget, event):
-        if event.button == 3:            
-            selection =  widget.get_selection().get_selected_rows()
-            if selection[1] != []:
-                # create menu
-                menu = Gtk.Menu()  
-                restoreSelection = Gtk.MenuItem("Restore Moment(revision)")
-                restoreSelection.connect("activate", self.restore_selection, None )
-                menu.append( restoreSelection )                        
-                # display menu
-                restoreSelection.show()
-                menu.popup( None, None, None, event.button, event.time )
-                return True
-        return False
-    
+        return self.popup_restore_menu(widget, event, "Restore Moment(revision)", False)
+
     def get_selected_revision(self):
         model, entry = self.gtkbuilder.get_object('treeview_revisions').get_selection().get_selected()
-        if not entry: return
-        rev = entry and model.get_value(entry, 1)
-        return rev
-    
+        return model.get_value(entry, 1) if entry else None
+
     def open_preferences(self):
         self.register_gui( manage_backup_preferences_gui.GUI(self.register_gui, self.unregister_gui, self.uuid, self.host, self.path) )
 
     def start_backup(self):
-        icon = self.main_window.render_icon(Gtk.STOCK_SAVE, Gtk.IconSize.MENU)
-        running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
-        i = running_tasks_model.append( ( icon, util.pango_escape('backing up: '+self.path), datetime.datetime.now(), '' ) )
-        gui = self
-        def thread_func():
-            backup.backup(gui.uuid, gui.host, gui.path, gui.password)
-            def ui_update():
-                gui.update_revisions()
-                running_tasks_model.remove(i)
-                messageBox.takedownProgressBar()
-            GLib.idle_add(ui_update)
+        def work():
+            backup.backup(self.uuid, self.host, self.path, self.password)
+            # listed here so duplicity does not block the gtk thread
+            return backup.get_revisions(self.uuid, self.host, self.path)
+        self.run_task(Gtk.STOCK_SAVE, 'backing up: '+self.path, 'Backing Up, Please Wait', work, self.show_revisions)
 
-        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Backing Up, Please Wait' )
-        thread = threading.Thread(target=thread_func)
-        thread.start()
-
-    def start_restore(self, selection=None ):  
-        gui = self
+    def start_restore(self, selection=None ):
         rev = self.get_selected_revision()
-        def thread_func():
-            if selection != None:
-                for numericPath in selection[1]:
-                    # construct a string path
-                    path = ""
-                    for ndx in range( 0, len(numericPath) ):
-                        tpl = [] + numericPath[:ndx + 1]
-                        itr = selection[0].get_iter( tpl )
-                        path += ( "/"+ selection[0].get_value(itr,0) )
-                    backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password, path )
-            else:
-                backup.restore_to_revision( gui.uuid, gui.host, gui.path, rev, gui.password)
-            GLib.idle_add(messageBox.takedownProgressBar)
+        def work():
+            if selection is None:
+                backup.restore_to_revision( self.uuid, self.host, self.path, rev, self.password)
+                return
+            model, tree_paths = selection
+            for numericPath in tree_paths:
+                # the path of the row, from the names of the rows above it
+                path = ''.join('/' + model.get_value(model.get_iter(numericPath[:depth]), 0) for depth in range(1, len(numericPath) + 1))
+                backup.restore_to_revision( self.uuid, self.host, self.path, rev, self.password, path )
+        backup_progress_gui.run_with_progress(self.register_gui, self.unregister_gui, self.main_window, 'Restoring, Please Wait', work)
 
-        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Restoring, Please Wait' )
-        thread = threading.Thread(target=thread_func)
-        thread.start()
-        return
-        
     def start_export(self):
         dialog = Gtk.FileChooserDialog(title='Select folder to save archive to...',
                                        parent=None,
                                        action=Gtk.FileChooserAction.SELECT_FOLDER,
                                        buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
-        response = dialog.run()
-        if response == Gtk.ResponseType.OK:
+        if dialog.run() == Gtk.ResponseType.OK:
             target_dir = dialog.get_filename()
             rev = self.get_selected_revision()
-            icon = self.main_window.render_icon(Gtk.STOCK_FLOPPY, Gtk.IconSize.MENU)
-            running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
-            i = running_tasks_model.append( ( icon, util.pango_escape('exporting selected revision to: '+target_dir), datetime.datetime.now(), '' ) )
-            gui = self
-            def thread_func():
-                fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, target_dir, gui.password )
+            def work():
+                fn, tmp_path = backup.export_revision( self.uuid, self.host, self.path, rev, target_dir, self.password )
                 backup.rmdir(os.path.dirname(tmp_path))
                 if fn:
                     util.open_file(fn)
                 else:
                     backup.launch_error('Failed to export revision %s' % rev)
-                def ui_task():
-                    running_tasks_model.remove(i)
-                    messageBox.takedownProgressBar()
-                GLib.idle_add(ui_task)
-
-            messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Exporting Backup, Please Wait' )
-            thread = threading.Thread(target=thread_func)
-            thread.start()
-        
-        elif response == Gtk.ResponseType.CANCEL: pass
+            self.run_task(Gtk.STOCK_FLOPPY, 'exporting selected revision to: '+target_dir, 'Exporting Backup, Please Wait', work)
         dialog.destroy()
 
     def start_explore(self):
         rev = self.get_selected_revision()
-        icon = self.main_window.render_icon(Gtk.STOCK_DIRECTORY, Gtk.IconSize.MENU)
-        running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
-        i = running_tasks_model.append( ( icon, util.pango_escape('preparing folder for exploration of revision: '+rev), datetime.datetime.now(), '' ) )
-        gui = self
-        def thread_func():
-            fn, tmp_path = backup.export_revision( gui.uuid, gui.host, gui.path, rev, None, gui.password )
+        def work():
+            fn, tmp_path = backup.export_revision( self.uuid, self.host, self.path, rev, None, self.password )
             if os.path.isdir(tmp_path):
                 util.open_file(tmp_path)
             else:
                 backup.launch_error('Failed to restore revision %s for exploration' % rev)
-            def ui_update():
-                running_tasks_model.remove(i)
-                messageBox.takedownProgressBar()
-            GLib.idle_add(ui_update)
+        self.run_task(Gtk.STOCK_DIRECTORY, 'preparing folder for exploration of revision: '+rev, 'Exploring Backup, Please Wait', work)
 
-        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Exploring Backup, Please Wait' )
-        thread = threading.Thread(target=thread_func)
-        thread.start()
-    
     def start_status(self):
-        icon = self.main_window.render_icon(Gtk.STOCK_FIND, Gtk.IconSize.MENU)
-        running_tasks_model = self.gtkbuilder.get_object('running_tasks').get_model()
-        i = running_tasks_model.append((icon, util.pango_escape('retrieving folder status since last backup...'), datetime.datetime.now(), ''))
-        gui = self
-        def thread_func():
-            added, modified, deleted = backup.get_status( gui.uuid, gui.host, gui.path, gui.password )
-            def ui_update():
-                running_tasks_model.remove(i)
-                messageBox.takedownProgressBar()
-                gui2 = backup_status_gui.GUI(gui.register_gui, gui.unregister_gui, gui.uuid, gui.host, gui.path, gui.main_window )
-                gui.register_gui(gui2)
-                gui2.set_files(added, modified, deleted)
-            GLib.idle_add(ui_update)
-        messageBox = backup_progress_gui.GUI(gui.register_gui, gui.unregister_gui, self.main_window, 'Retrieving Status, Please Wait' )
-        thread = threading.Thread(target=thread_func)
-        thread.start()
+        def show_status(status):
+            status_gui = backup_status_gui.GUI(self.register_gui, self.unregister_gui, self.uuid, self.host, self.path, self.main_window )
+            self.register_gui(status_gui)
+            status_gui.set_files(*status)
+        self.run_task(Gtk.STOCK_FIND, 'retrieving folder status since last backup...', 'Retrieving Status, Please Wait',
+                      lambda: backup.get_status( self.uuid, self.host, self.path, self.password ), after=show_status)
 
     def open_about(self):
-        about_dialoge = about_gui.GUI(self.register_gui, self.unregister_gui, self.main_window)
-        
+        about_gui.GUI(self.register_gui, self.unregister_gui, self.main_window)
+
     def restore_button_notify(self, widget):
-        treeview_files_widget = self.gtkbuilder.get_object('treeview_files')
-        selection = treeview_files_widget.get_selection().get_selected_rows()
-        if len(selection[1]) == 0: selection = None
-        self.start_restore(selection)
-          
+        selection = self.gtkbuilder.get_object('treeview_files').get_selection().get_selected_rows()
+        self.start_restore(selection if selection[1] else None)
+
+    def update_task_times(self):
+        now = datetime.datetime.now()
+        for row in self.gtkbuilder.get_object('running_tasks').get_model():
+            row[3] = util.humanize_time(now - row[2])
+        return True
+
     def __init__(self, register_gui, unregister_gui, uuid, host, path, password):
 
         self.register_gui = register_gui
@@ -286,52 +200,45 @@ class GUI(object):
         self.host = host
         self.path = path
         self.password = password
-        
-        self.rev_files_map = {}
 
-        self.gtkbuilder = Gtk.Builder()
-        self.gtkbuilder.add_from_file( os.path.join( util.RUN_FROM_DIR, 'glade', 'manage_backup.glade' ) )
-        self.main_window = self.gtkbuilder.get_object('window')
+        self.gtkbuilder = util.load_glade('manage_backup.glade')
+        get = self.gtkbuilder.get_object
+        self.main_window = get('window')
         self.main_window.connect("delete-event", self.close)
-        self.main_window.set_icon(self.main_window.render_icon(Gtk.STOCK_HARDDISK, Gtk.IconSize.BUTTON))
-        self.gtkbuilder.get_object('entry_drive_name').set_text( backup.get_drive_name(self.uuid) )
-        self.gtkbuilder.get_object('entry_path').set_text( self.host +':'+ self.path )
-        self.main_window.set_title('%s v%s - Manage Backup' % (settings.PROGRAM_NAME, settings.PROGRAM_VERSION))
-    
+        get('entry_drive_name').set_text( backup.get_drive_name(self.uuid) )
+        get('entry_path').set_text( self.host +':'+ self.path )
+        util.setup_window(self.main_window, 'Manage Backup')
+
         # toolbar
         can_backup = backup.test_backup_assertions(self.uuid, self.host, self.path)
-        self.gtkbuilder.get_object('toolbutton_backup').set_sensitive( can_backup )
-        self.gtkbuilder.get_object('toolbutton_backup').connect('clicked', lambda x: self.start_backup() )
-        self.gtkbuilder.get_object('toolbutton_restore').connect('clicked', self.restore_button_notify )
-        self.gtkbuilder.get_object('toolbutton_status').set_sensitive( can_backup )
-        self.gtkbuilder.get_object('toolbutton_status').connect('clicked', lambda x: self.start_status() )
-        self.gtkbuilder.get_object('toolbutton_export').connect('clicked', lambda x: self.start_export() )
-        self.gtkbuilder.get_object('toolbutton_explore').connect('clicked', lambda x: self.start_explore() )
-        self.gtkbuilder.get_object('toolbutton_preferences').connect('clicked', lambda x: self.open_preferences() )
-        self.gtkbuilder.get_object('toolbutton_about').connect('clicked', lambda x: self.open_about() )
-    
+        get('toolbutton_backup').set_sensitive( can_backup )
+        get('toolbutton_backup').connect('clicked', lambda x: self.start_backup() )
+        get('toolbutton_restore').connect('clicked', self.restore_button_notify )
+        get('toolbutton_status').set_sensitive( can_backup )
+        get('toolbutton_status').connect('clicked', lambda x: self.start_status() )
+        get('toolbutton_export').connect('clicked', lambda x: self.start_export() )
+        get('toolbutton_explore').connect('clicked', lambda x: self.start_explore() )
+        get('toolbutton_preferences').connect('clicked', lambda x: self.open_preferences() )
+        get('toolbutton_about').connect('clicked', lambda x: self.open_about() )
+
         # revision list
-        treeview_revisions_model = Gtk.ListStore( str, str )
-        treeview_revisions_widget = self.gtkbuilder.get_object('treeview_revisions')
-        renderer = Gtk.CellRendererText()        
-        treeview_revisions_widget.append_column( Gtk.TreeViewColumn('History', renderer, markup=0) )
-        treeview_revisions_widget.set_model(treeview_revisions_model)
+        treeview_revisions_widget = get('treeview_revisions')
+        util.add_markup_column(treeview_revisions_widget, 0, 'History')
+        treeview_revisions_widget.set_model(Gtk.ListStore( str, str ))
         treeview_revisions_widget.connect( 'cursor-changed', self.update_files )
         treeview_revisions_widget.set_property('rules-hint', True)
         treeview_revisions_widget.connect("button_press_event", self.revview_mouse_notify)
         self.update_revisions()
-    
+
         # file list
-        treeview_files_widget = self.gtkbuilder.get_object('treeview_files')
-        treeview_files_model = Gtk.TreeStore( str, str )      
+        treeview_files_widget = get('treeview_files')
+        treeview_files_model = Gtk.TreeStore( str, str )
         renderer = Gtk.CellRendererText()
         renderer.set_property('font','arial')
-        filesColumn = Gtk.TreeViewColumn('Files', renderer, markup=0)
-        filesColumn.set_resizable(True)
-        dateColumn = Gtk.TreeViewColumn('Date', renderer, markup=1)
-        dateColumn.set_resizable(True)
-        treeview_files_widget.append_column( filesColumn )
-        treeview_files_widget.append_column( dateColumn )
+        for column, title in enumerate(('Files', 'Date')):
+            treeview_column = Gtk.TreeViewColumn(title, renderer, markup=column)
+            treeview_column.set_resizable(True)
+            treeview_files_widget.append_column( treeview_column )
         treeview_files_widget.set_model(treeview_files_model)
         treeview_files_widget.set_property('rules-hint', True)
         treeview_files_model.append( None, [('please select a revision to view... (on the left)'),('')] )
@@ -339,26 +246,13 @@ class GUI(object):
         treeview_files_widget.connect("button_press_event", self.fileview_mouse_notify)
 
         # task list
-        running_tasks_widget = self.gtkbuilder.get_object('running_tasks')
-        running_tasks_model = Gtk.ListStore( GdkPixbuf.Pixbuf, str, GObject.TYPE_PYOBJECT, str )
-        renderer = Gtk.CellRendererPixbuf()
-        renderer.set_property('xpad', 4)
-        renderer.set_property('ypad', 4)
-        running_tasks_widget.append_column( Gtk.TreeViewColumn('', renderer, pixbuf=0) )
-        renderer = Gtk.CellRendererText()
-        running_tasks_widget.append_column( Gtk.TreeViewColumn('', renderer, markup=1) )
-        renderer = Gtk.CellRendererText()
-        running_tasks_widget.append_column( Gtk.TreeViewColumn('', renderer, markup=3) )
-        running_tasks_widget.set_model(running_tasks_model)
+        running_tasks_widget = get('running_tasks')
+        util.add_icon_column(running_tasks_widget)
+        util.add_markup_column(running_tasks_widget, 1)
+        util.add_markup_column(running_tasks_widget, 3)
+        running_tasks_widget.set_model(Gtk.ListStore( GdkPixbuf.Pixbuf, str, GObject.TYPE_PYOBJECT, str ))
         running_tasks_widget.set_headers_visible(False)
         running_tasks_widget.set_property('rules-hint', True)
-        # status bar time update function
-        def ui_update():
-            for x in running_tasks_model:
-                x[3] = util.humanize_time(datetime.datetime.now() - x[2])
-        self.status_bar_thread = repeat_timer.RepeatTimer(3, GLib.idle_add, [ui_update])
-        self.status_bar_thread.daemon = True
-        self.status_bar_thread.start()
+        # status bar time update
+        self.status_bar_timer = GLib.timeout_add(3000, self.update_task_times)
         self.main_window.show()
-
-

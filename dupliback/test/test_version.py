@@ -5,8 +5,6 @@ import subprocess
 import sys
 import types
 
-import pytest
-
 import settings
 from conftest import SRC_DIR, requires_display
 

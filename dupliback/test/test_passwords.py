@@ -1,21 +1,15 @@
 import hashlib
 import os
-import pickle
 
 import pytest
 
 import backup
+from conftest import PRODUCTION_HASH_ITERATIONS, stored_hash, write_legacy_hash
 
 
-def write_legacy_hash(repo, password):
-    properties = backup.get_properties(*repo.args)
-    properties['password'] = hashlib.md5(password.encode('utf-8')).hexdigest()
-    with open(os.path.join(backup.get_backupPath(*repo.args), backup.PROPERTIES_FILE), 'wb') as f:
-        pickle.dump(properties, f)
-
-
-def stored_hash(repo):
-    return backup.get_properties(*repo.args)['password']
+def test_production_hashing_is_slow_enough():
+    # the tests lower the count, the shipped value must stay high
+    assert PRODUCTION_HASH_ITERATIONS >= 100000
 
 
 def test_hash_is_salted_pbkdf2():

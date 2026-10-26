@@ -1,9 +1,6 @@
 import datetime
 import os
-import threading
-import time
 
-import repeat_timer
 import util
 
 
@@ -27,23 +24,6 @@ def test_humanize_time():
     assert util.humanize_time(datetime.timedelta(seconds=125)) == '2m 5s'
     assert util.humanize_time(datetime.timedelta(hours=3, minutes=2)) == '3h 2m'
     assert util.humanize_time(datetime.timedelta(days=2, hours=5)) == '2d 5h'
-
-
-def test_repeat_timer_fires_every_interval():
-    fired = threading.Event()
-    ticks = []
-    def tick():
-        ticks.append(time.monotonic())
-        if len(ticks) == 6:
-            fired.set()
-    timer = repeat_timer.RepeatTimer(0.1, tick)
-    timer.start()
-    assert fired.wait(10)
-    timer.cancel()
-    gaps = sorted(later - earlier for earlier, later in zip(ticks, ticks[1:]))
-    # the median gap is ~0.1s, the old double sleep made it ~0.2s; the median
-    # ignores the odd tick delayed by a busy machine
-    assert gaps[len(gaps) // 2] < 0.15
 
 
 def test_device_callbacks_can_be_removed_twice():

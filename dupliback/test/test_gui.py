@@ -1,22 +1,19 @@
 # smoke tests that build the real windows, they need an X display
-import hashlib
 import os
-import pickle
 import shutil
-
-import pytest
 
 import backup
 
-from conftest import requires_display, run_in_main_loop
+from conftest import requires_display, run_in_main_loop, stored_hash, write, write_legacy_hash
 
 pytestmark = requires_display
 
 
-def test_windows_build_and_close(repo):
+def test_windows_build_and_close(repo, monkeypatch):
     import create_backup_gui, manage_backup_gui, select_backup_gui, backup_progress_gui
-    with open(os.path.join(repo.path, 'a'), 'w') as f:
-        f.write('a')
+    # only the fake drive, not every device on the machine running the tests
+    monkeypatch.setattr(backup, 'get_mounted_devices', lambda: [repo.uuid])
+    write(os.path.join(repo.path, 'a'), 'a')
     backup.init_backup(*repo.args, 'pw')
     if shutil.which('duplicity'):
         backup.backup(*repo.args, 'pw')
@@ -29,6 +26,7 @@ def test_windows_build_and_close(repo):
         manage = manage_backup_gui.GUI(guis.add, guis.discard, *repo.args, 'pw')
         revisions = len(manage.gtkbuilder.get_object('treeview_revisions').get_model())
         progress = backup_progress_gui.GUI(guis.add, guis.discard, None, 'testing')
+        assert progress.pulse() is True
         progress.takedownProgressBar()
         manage.close()
         select.close()
@@ -62,10 +60,7 @@ def test_password_dialog_checks_on_ok():
 def test_opening_backup_upgrades_legacy_hash(repo, monkeypatch):
     import select_backup_gui
     backup.init_backup(*repo.args, 'pw')
-    properties = backup.get_properties(*repo.args)
-    properties['password'] = hashlib.md5(b'pw').hexdigest()
-    with open(os.path.join(backup.get_backupPath(*repo.args), backup.PROPERTIES_FILE), 'wb') as f:
-        pickle.dump(properties, f)
+    legacy_hash = write_legacy_hash(repo, 'pw')
     opened = []
     monkeypatch.setattr(select_backup_gui.manage_backup_gui, 'GUI', lambda *args: opened.append(args) or object())
     def build():
@@ -73,8 +68,8 @@ def test_opening_backup_upgrades_legacy_hash(repo, monkeypatch):
         treeview = gui.gtkbuilder.get_object('treeview_backups')
         model = treeview.get_model()
         model.clear()
-        treeview.get_selection().select_iter(model.append((None, 'test', True, *repo.args, properties['password'])))
+        treeview.get_selection().select_iter(model.append((None, 'test', True, *repo.args, legacy_hash)))
         gui.launchManageBackupGui('pw')
     run_in_main_loop(build)
     assert opened
-    assert backup.get_properties(*repo.args)['password'].startswith('pbkdf2_sha256$')
+    assert stored_hash(repo).startswith('pbkdf2_sha256$')

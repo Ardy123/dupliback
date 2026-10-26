@@ -1,21 +1,39 @@
-import os
+import threading
 import util
 import logging
-from gi.repository import Gtk, GLib
-import repeat_timer
+from gi.repository import GLib
+
+
+def run_with_progress(register_gui, unregister_gui, parentWnd, msg, work, on_done=None, after=None):
+    # shows a progress dialog while work() runs on a worker thread, then on the gtk
+    # thread calls on_done(result), takes the dialog down and calls after(result)
+    progress = GUI(register_gui, unregister_gui, parentWnd, msg)
+    def finish(result):
+        if on_done:
+            on_done(result)
+        progress.takedownProgressBar()
+        if after:
+            after(result)
+        return False
+    # the dialog exists before the thread starts, so finish can always take it down
+    threading.Thread(target=lambda: GLib.idle_add(finish, work())).start()
+    return progress
+
 
 class GUI(object):
     def takedownProgressBar(self):
         logging.debug('progress bar take down')
-        self.progress_thread.cancel()
+        GLib.source_remove(self.pulse_timer)
         self.unregister_gui(self)
         self.main_window.close()
-    
+
+    def pulse(self):
+        self.progress_bar.pulse()
+        return True
+
     def __init__(self, register_gui, unregister_gui, parentWnd, msg):
-        self.register_gui = register_gui
         self.unregister_gui = unregister_gui
-        self.gtkbuilder = Gtk.Builder()
-        self.gtkbuilder.add_from_file(os.path.join(util.RUN_FROM_DIR, 'glade', 'backup_progress.glade'))
+        self.gtkbuilder = util.load_glade('backup_progress.glade')
         self.main_window = self.gtkbuilder.get_object('messagedialog1')
         self.progress_bar= self.gtkbuilder.get_object('progress_bar')
         self.message = self.gtkbuilder.get_object('progress_messasge')
@@ -26,12 +44,7 @@ class GUI(object):
         self.main_window.set_deletable(False)
         # force this window ontop
         self.main_window.set_transient_for( parentWnd )
-        # running_tasks_thread.daemon = True
-        self.main_window.show()        
+        self.main_window.show()
         # start progress bar updates
         logging.debug('progress bar put up')
-        # the timer runs on its own thread, so hand the pulse to the gtk main loop
-        self.progress_thread = repeat_timer.RepeatTimer(0.5, GLib.idle_add, [self.progress_bar.pulse])
-        self.progress_thread.daemon = True
-        self.progress_thread.start()
-    
+        self.pulse_timer = GLib.timeout_add(500, self.pulse)
