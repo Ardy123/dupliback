@@ -16,9 +16,9 @@ to support the following features.
 ## Running from source
 
 dupli.back targets Kubuntu/Ubuntu 26.04. It needs Python 3, PyGObject with
-GTK 3, dbus-python and **duplicity 3.0.6 or newer** (`MIN_DUPLICITY_VERSION` in
-`dupliback/src/settings.py`): Ubuntu 26.04, Fedora 43+ and Debian unstable ship
-it; Ubuntu 24.04 (2.1) and Debian 13 (3.0.4) are too old. On Ubuntu:
+GTK 3, dbus-python and **duplicity 3.0.4 or newer** (`MIN_DUPLICITY_VERSION` in
+`dupliback/src/settings.py`): Ubuntu 26.04, Debian 13 and Fedora 43+ ship it;
+Ubuntu 24.04 (2.1) and Debian 12 (0.8) are too old. On Ubuntu:
 
     sudo apt-get install python3-venv python3-gi python3-dbus \
         gir1.2-gtk-3.0 duplicity xvfb

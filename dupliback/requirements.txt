@@ -5,7 +5,7 @@
 # in src/settings.py.
 PyGObject>=3.36
 dbus-python>=1.2.16
-duplicity>=3.0.6
+duplicity>=3.0.4
 
 # Tests
 pytest>=6.0

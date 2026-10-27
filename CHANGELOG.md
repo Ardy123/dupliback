@@ -40,9 +40,9 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   falls back to duplicity if the signatures can't be read.
 
 ### Changed
-- duplicity 3.0.6 or newer is required (what Kubuntu/Ubuntu 26.04 ships; also
-  Fedora 43+ and Debian unstable). The packages depend on it, and CI runs the
-  tests on Ubuntu 26.04. Backups made by older duplicity versions stay
+- duplicity 3.0.4 or newer is required (Kubuntu/Ubuntu 26.04, Debian 13,
+  Fedora 43+). The packages depend on it, and CI runs the tests on Ubuntu
+  26.04 and Debian 13. Backups made by older duplicity versions stay
   readable.
 - Sources moved to `dupliback/src`.
 - The version is defined only in `dupliback/src/settings.py` instead of being

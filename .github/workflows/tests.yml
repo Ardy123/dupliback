@@ -12,10 +12,15 @@ permissions:
 
 jobs:
   tests:
-    name: tests
+    # the supported base and the distro with the oldest supported duplicity:
+    # Ubuntu 26.04 (3.0.6) and Debian 13 (3.0.4, MIN_DUPLICITY_VERSION)
+    name: tests on ${{ matrix.image }}
     runs-on: ubuntu-24.04
-    # the supported base, so the tests use its duplicity (3.0.6)
-    container: ubuntu:26.04
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [ubuntu:26.04, debian:stable]
     env:
       DEBIAN_FRONTEND: noninteractive
     steps:
@@ -77,11 +82,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # duplicity >= 3.0.6: Ubuntu 26.04 (3.0.6), Debian unstable (3.1);
-          # Ubuntu 24.04 (2.1) and Debian 13 (3.0.4) are too old
+          # duplicity >= 3.0.4: Ubuntu 26.04 (3.0.6), Debian 13 (3.0.4);
+          # Ubuntu 24.04 (2.1) and Debian 12 (0.8) are too old
           - image: ubuntu:26.04
             install: apt-get update && apt-get install -y ./dupli.back-*.deb
-          - image: debian:unstable
+          - image: debian:stable
             install: apt-get update && apt-get install -y ./dupli.back-*.deb
           - image: fedora:latest
             install: dnf install -y ./dupli.back-*.noarch.rpm
