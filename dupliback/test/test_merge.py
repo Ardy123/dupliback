@@ -220,6 +220,59 @@ def test_metadata_only_change_is_refused(repo, tmp_path):
     assert not merge.get_journal(d)
 
 
+def record_steps(monkeypatch, fail=None):
+    # (step, start, end) of each duplicity run; fail names one to break
+    steps = []
+    real = merge._run_step
+    def run(password, options, operands, log_file):
+        step = os.path.basename(log_file).split('-')[0]
+        if step == 'verify':
+            step = '-'.join(os.path.basename(log_file).split('-')[:2])
+        start = time.monotonic()
+        try:
+            if step == fail:
+                raise merge.MergeError('%s failed' % step)
+            return real(password, options, operands, log_file)
+        finally:
+            steps.append((step, start, time.monotonic()))
+    monkeypatch.setattr(merge, '_run_step', run)
+    return steps
+
+
+def test_original_is_checked_while_saving(chain, monkeypatch):
+    repo, epochs, before = chain
+    d = backup.get_backupPath(*repo.args)
+    steps = record_steps(monkeypatch)
+    merge.prepare_rewrite(merge.plan_prune(d, [epochs[1]]), 'pw')
+    times = {step: (start, end) for step, start, end in steps}
+    assert times['verify-old'][0] < times['backup'][1]
+    assert times['restore'][1] <= times['verify-old'][0]
+    merge.undo_rewrite(d)
+
+
+def test_quick_rebuild_skips_the_original(chain, monkeypatch):
+    repo, epochs, before = chain
+    d = backup.get_backupPath(*repo.args)
+    steps = record_steps(monkeypatch)
+    merge.prepare_rewrite(merge.plan_prune(d, [epochs[1]]), 'pw',
+                          thorough=False)
+    assert 'verify-old' not in [step for step, start, end in steps]
+    merge.undo_rewrite(d)
+
+
+def test_failed_original_check_stops_the_rewrite(chain, monkeypatch):
+    repo, epochs, before = chain
+    d = backup.get_backupPath(*repo.args)
+    files = drive_files(repo)
+    steps = record_steps(monkeypatch, fail='verify-old')
+    with pytest.raises(merge.MergeError, match='verify-old failed'):
+        merge.prepare_rewrite(merge.plan_prune(d, [epochs[1]]), 'pw')
+    # the save and its check still ran to the end, and nothing changed
+    assert 'verify-new' in [step for step, start, end in steps]
+    assert drive_files(repo) == files
+    assert not merge.get_journal(d)
+
+
 def test_failed_prepare_leaves_the_drive_unchanged(chain, monkeypatch):
     repo, epochs, before = chain
     d = backup.get_backupPath(*repo.args)
@@ -468,7 +521,7 @@ def test_prepare_as_admin_runs_the_helper(chain, tmp_path, no_pkexec):
     journal = merge.prepare_as_admin(plan, 'pw', report=lambda step, **fields:
                                      progress.append((step, fields)))
     assert journal['phase'] == 'prepared'
-    assert ('check_new', {'moment': 1, 'of': 1,
+    assert ('check_new_and_old', {'moment': 1, 'of': 1,
                           'when': time.ctime(epochs[3])}) in progress
     merge.commit_rewrite(d, 'pw')
     check_kept(repo, 'pw', before, tmp_path, [epochs[0]] + epochs[3:])

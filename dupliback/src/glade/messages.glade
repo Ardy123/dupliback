@@ -168,6 +168,12 @@ Up to {freed} can be freed. {rebuilt} moment(s) will be rebuilt in a temporary f
   <object class="GtkLabel" id="progress_check_old">
     <property name="label" translatable="yes">Moment {moment} of {of} ({when}): checking it against the original</property>
   </object>
+  <object class="GtkLabel" id="progress_save_and_old">
+    <property name="label" translatable="yes">Moment {moment} of {of} ({when}): saving it in the new history, and checking it against the original</property>
+  </object>
+  <object class="GtkLabel" id="progress_check_new_and_old">
+    <property name="label" translatable="yes">Moment {moment} of {of} ({when}): checking the new copy, and checking it against the original</property>
+  </object>
   <object class="GtkLabel" id="progress_check_history">
     <property name="label" translatable="yes">Checking the new history</property>
   </object>

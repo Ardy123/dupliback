@@ -2,6 +2,7 @@
 # chosen moments, each with its original time and exact state. A kept moment
 # that follows a dropped one is regenerated (restored, then re-diffed against
 # its new predecessor by duplicity) and verified before the drive is touched.
+import concurrent.futures
 import hashlib
 import json
 import os
@@ -227,7 +228,8 @@ def estimate_rewrite(plan, source_path, thorough=True):
         'staging_needed': source_bytes if plan.regenerated else 0,
         'staging_free': shutil.disk_usage(os.path.dirname(staging)).free,
         'drive_free': shutil.disk_usage(plan.duplicity_dir).free,
-        'hours': reads * (3 if thorough else 2) / READ_BYTES_PER_HOUR,
+        # the check against the original runs alongside, sharing the cpu
+        'hours': reads * (2.5 if thorough else 2) / READ_BYTES_PER_HOUR,
         'foreign_owned': foreign,
     }
 
@@ -358,8 +360,6 @@ def _check_chain(password, uri, archive, name, log_file, expected):
 def _regenerate(plan, k, moment, action, previous_end, work, password,
                 thorough, report):
     d = plan.duplicity_dir
-    target = os.path.join(work, 'target%d' % k)
-    archive = os.path.join(work, 'cache')
     tree = os.path.join(work, 'tree')
     tmp = os.path.join(work, 'tmp')
     logs = os.path.join(work, 'log')
@@ -370,6 +370,37 @@ def _regenerate(plan, k, moment, action, previous_end, work, password,
                          '--tempdir', tmp],
               [backup.backup_uri(d), tree],
               os.path.join(logs, 'restore-%s.log' % label))
+    old = None
+    # leaving the with waits for the check against the original, so the
+    # tree is never removed under it
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        if thorough:
+            # it only reads the old chain and the tree: run it meanwhile
+            old = pool.submit(
+                _run_step, password,
+                ['verify', '--compare-data', '--time', str(moment.end),
+                 '--tempdir', tmp], [backup.backup_uri(d), tree],
+                os.path.join(logs, 'verify-old-%s.log' % label))
+            steps = lambda step: report(step + '_and_old')
+        else:
+            steps = report
+        added = _save_and_check(k, moment, action, previous_end,
+                                os.path.join(work, 'target%d' % k), tree,
+                                work, password, label, steps)
+        if old and not old.done():
+            report('check_old')
+        if old:
+            old.result()
+    backup.rmdir(tree)
+    return added
+
+
+def _save_and_check(k, moment, action, previous_end, target, tree, work,
+                    password, label, report):
+    # backs up the restored tree into target and verifies it from there
+    archive = os.path.join(work, 'cache')
+    tmp = os.path.join(work, 'tmp')
+    logs = os.path.join(work, 'log')
     before = set(os.listdir(target))
     report('save')
     options = [{'full': 'full', 'inc': 'incremental'}[action],
@@ -398,13 +429,6 @@ def _regenerate(plan, k, moment, action, previous_end, work, password,
                          '--name', 'chain%d' % k, '--tempdir', tmp],
               [backup.backup_uri(target), tree],
               os.path.join(logs, 'verify-new-%s.log' % label))
-    if thorough:
-        report('check_old')
-        _run_step(password, ['verify', '--compare-data', '--time',
-                             str(moment.end), '--tempdir', tmp],
-                  [backup.backup_uri(d), tree],
-                  os.path.join(logs, 'verify-old-%s.log' % label))
-    backup.rmdir(tree)
     return sorted(added)
 
 

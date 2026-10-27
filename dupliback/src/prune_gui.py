@@ -12,8 +12,8 @@ import merge
 # the resume dialog's responses, as set in messages.glade
 FINISH, UNDO = 1, 2
 
-PROGRESS_STEPS = ('ready', 'unpack', 'save', 'check_new', 'check_old',
-                  'check_history')
+PROGRESS_STEPS = ('ready', 'unpack', 'save', 'check_new', 'save_and_old',
+                  'check_new_and_old', 'check_old', 'check_history')
 
 
 def _describe(epochs):
