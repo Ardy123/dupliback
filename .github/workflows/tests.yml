@@ -12,8 +12,8 @@ permissions:
 
 jobs:
   tests:
-    # the supported base and the distro with the oldest supported duplicity:
-    # Ubuntu 26.04 (3.0.6) and Debian 13 (3.0.4, MIN_DUPLICITY_VERSION)
+    # the Ubuntu LTS dupli.back must work on (3.0.6), and the oldest duplicity
+    # it claims to support: Debian 13's 3.0.4, MIN_DUPLICITY_VERSION
     name: tests on ${{ matrix.image }}
     runs-on: ubuntu-24.04
     container: ${{ matrix.image }}

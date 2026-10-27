@@ -6,9 +6,10 @@ PROGRAM_NAME = 'dupli.back'
 # the only place the version is set. releases use it exactly; afterwards it
 # is bumped by hand to the next one.
 PROGRAM_BASE_VERSION = '0.5.0'
-# the oldest duplicity supported: what Debian 13 ships (Kubuntu 26.04 has
-# 3.0.6). Packages depend on it through the build scripts; requirements.txt
-# repeats it (a test checks).
+# the oldest duplicity known to work (Debian 13's, tested in CI). It must
+# not exceed what the current Ubuntu LTS installs (26.04: 3.0.6). Packages
+# depend on it through the build scripts; requirements.txt repeats it (a test
+# checks).
 MIN_DUPLICITY_VERSION = '3.0.4'
 PROGRAM_DEBUG = False
 
