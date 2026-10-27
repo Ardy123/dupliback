@@ -28,6 +28,10 @@ SHOW_ERROR_DIALOGS = True
 REWRITE_JOURNAL = 'dupliback_rewrite.json'
 # a new chain is started when the last full backup is older than this
 FULL_BACKUP_EVERY = '1Y'
+# duplicity retries failed writes for many minutes, so a watched command is
+# stopped once the disk it writes to is this close to full
+LOW_SPACE_BYTES = 64 * 1024 * 1024
+SPACE_CHECK_SECONDS = 5
 FULL_BACKUP_SECONDS = 365 * 24 * 3600
 DEV_BY_UUID = '/dev/disk/by-uuid/'
 
@@ -142,12 +146,50 @@ def exec_subprocess_cmd(cmd, env=None):
                           universal_newlines=True, env=env) as proc:
         yield from proc.stdout
 
-def run_subprocess_cmd(cmd, env=None):
-    # runs cmd to completion, logging its output; returns its exit code
+class OutOfSpace(Exception):
+    def __init__(self, folder):
+        super().__init__('not enough space in %s' % folder)
+        self.folder = folder
+
+
+class ExportError(Exception):
+    # step is 'restore' or 'archive'
+    def __init__(self, step, folder):
+        super().__init__('%s failed in %s' % (step, folder))
+        self.step = step
+        self.folder = folder
+
+
+def _stop_when_full(proc, folder, stopped):
+    # checks folder's disk until proc ends; stops proc if it fills up
+    while shutil.disk_usage(folder).free >= LOW_SPACE_BYTES:
+        try:
+            proc.wait(SPACE_CHECK_SECONDS)
+            return
+        except subprocess.TimeoutExpired:
+            pass
+    stopped.append(folder)
+    proc.terminate()
+    try:
+        proc.wait(SPACE_CHECK_SECONDS)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
+
+def run_subprocess_cmd(cmd, env=None, space_in=None):
+    # runs cmd to completion, logging its output; returns its exit code.
+    # With space_in, raises OutOfSpace if that folder's disk fills up.
+    stopped = []
     with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           bufsize=1, universal_newlines=True, env=env) as proc:
+        if space_in:
+            threading.Thread(target=_stop_when_full,
+                             args=(proc, space_in, stopped),
+                             daemon=True).start()
         for line in proc.stdout:
             logging.debug(line)
+    if stopped:
+        raise OutOfSpace(space_in)
     return proc.returncode
 
 def get_dev_paths_for_uuid(uuid):
@@ -219,9 +261,9 @@ def duplicity_cmd(password, options, operands):
     # and run a backup's duplicity commands only through here
     return ['duplicity'] + options + gen_passwordCmd(password) + operands
 
-def run_duplicity(password, options, operands):
+def run_duplicity(password, options, operands, space_in=None):
     return run_subprocess_cmd(duplicity_cmd(password, options, operands),
-                              gen_duplicityEnv(password))
+                              gen_duplicityEnv(password), space_in)
 
 def stream_duplicity(password, options, operands):
     return exec_subprocess_cmd(duplicity_cmd(password, options, operands),
@@ -626,20 +668,29 @@ def get_files_for_revision(uuid, host, path, rev, password, callback):
 
 
 def export_revision(uuid, host, path, rev, target_path, password):
-    # restores rev to a temp dir, then archives it into target_path if given
+    # restores rev to a temp dir, then archives it into target_path if given.
+    # Raises OutOfSpace or ExportError after removing what it wrote.
     prety_rev = revision_label(rev)
-    tmp_dir = os.path.join(tempfile.mkdtemp(suffix='_dupliback'),
-                           'archive-%s' % (prety_rev))
-    if run_duplicity(password, ['restore', '--time', rev],
-                     [get_backupUri(uuid, host, path), tmp_dir]) != 0:
-        logging.error('failed to restore revision %s', rev)
-        return None, tmp_dir
+    top = tempfile.mkdtemp(suffix='_dupliback')
+    tmp_dir = os.path.join(top, 'archive-%s' % (prety_rev))
     fn = None
-    if target_path:
-        fn = os.path.join(target_path,
-                          'dupliback-archive_r%s.tar.gz' % (prety_rev))
-        run_subprocess_cmd(['tar', '-czf', fn, '-C', os.path.dirname(tmp_dir),
-                            os.path.basename(tmp_dir)])
+    try:
+        if run_duplicity(password, ['restore', '--time', rev],
+                         [get_backupUri(uuid, host, path), tmp_dir],
+                         space_in=top) != 0:
+            raise ExportError('restore', top)
+        if target_path:
+            fn = os.path.join(target_path,
+                              'dupliback-archive_r%s.tar.gz' % (prety_rev))
+            if run_subprocess_cmd(['tar', '-czf', fn, '-C', top,
+                                   os.path.basename(tmp_dir)],
+                                  space_in=target_path) != 0:
+                raise ExportError('archive', target_path)
+    except Exception:
+        rmdir(top)
+        if fn and os.path.exists(fn):
+            os.remove(fn)
+        raise
     return fn, tmp_dir
 
 def restore_to_revision( uuid, host, path, rev, password, restorePath=None):

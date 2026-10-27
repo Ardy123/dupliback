@@ -110,7 +110,43 @@ Up to {freed} can be freed. {rebuilt} moment(s) will be rebuilt in a temporary f
     <property name="text" translatable="yes">Full backup postponed</property>
     <property name="secondary_text" translatable="yes">A new full backup is due (the last one is over a year old), but it may not fit on the drive, so an incremental backup was made. Prune or merge old moments to free space.</property>
   </object>
+  <object class="GtkMessageDialog" id="dialog_export_failed">
+    <property name="can_focus">False</property>
+    <property name="title">dupli.back</property>
+    <property name="window_position">center</property>
+    <property name="message_type">error</property>
+    <property name="buttons">close</property>
+    <property name="text" translatable="yes">Export stopped</property>
+    <property name="secondary_text" translatable="yes">{reason}</property>
+  </object>
+  <object class="GtkMessageDialog" id="dialog_explore_failed">
+    <property name="can_focus">False</property>
+    <property name="title">dupli.back</property>
+    <property name="window_position">center</property>
+    <property name="message_type">error</property>
+    <property name="buttons">close</property>
+    <property name="text" translatable="yes">Explore stopped</property>
+    <property name="secondary_text" translatable="yes">{reason}</property>
+  </object>
+  <object class="GtkMessageDialog" id="dialog_task_failed">
+    <property name="can_focus">False</property>
+    <property name="title">dupli.back</property>
+    <property name="window_position">center</property>
+    <property name="message_type">error</property>
+    <property name="buttons">close</property>
+    <property name="text" translatable="yes">Something went wrong</property>
+    <property name="secondary_text" translatable="yes">{error}</property>
+  </object>
   <!-- texts used outside the dialogs -->
+  <object class="GtkLabel" id="text_no_space">
+    <property name="label" translatable="yes">There is not enough free space in {folder}. Free some space and try again.</property>
+  </object>
+  <object class="GtkLabel" id="text_restore_failed">
+    <property name="label" translatable="yes">duplicity could not restore this moment.</property>
+  </object>
+  <object class="GtkLabel" id="text_archive_failed">
+    <property name="label" translatable="yes">The archive could not be written to {folder}.</property>
+  </object>
   <object class="GtkLabel" id="text_full">
     <property name="label" translatable="yes">full</property>
   </object>

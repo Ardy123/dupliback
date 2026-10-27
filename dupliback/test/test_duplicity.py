@@ -129,11 +129,65 @@ def test_explore_restores_without_tarball(protected):
         backup.rmdir(os.path.dirname(tmp_dir))
 
 
+def export_dirs():
+    # the temp dirs exports restore into
+    import glob
+    import tempfile
+    return set(glob.glob(os.path.join(tempfile.gettempdir(), '*_dupliback')))
+
+
 def test_export_with_wrong_password_fails(protected, tmp_path):
-    fn, tmp_dir = backup.export_revision(
-        *protected.args, latest_revision(protected), str(tmp_path), 'wrong')
-    backup.rmdir(os.path.dirname(tmp_dir))
-    assert fn is None
+    before = export_dirs()
+    with pytest.raises(backup.ExportError) as failure:
+        backup.export_revision(*protected.args, latest_revision(protected),
+                               str(tmp_path), 'wrong')
+    assert failure.value.step == 'restore'
+    assert export_dirs() == before
+    assert not [name for name in os.listdir(tmp_path)
+                if name.endswith('.tar.gz')]
+
+
+@pytest.fixture
+def full_disk(monkeypatch):
+    # every disk looks full, and the watchdog checks often
+    real = shutil.disk_usage
+    monkeypatch.setattr(backup.shutil, 'disk_usage',
+                        lambda path: real(path)._replace(free=0))
+    monkeypatch.setattr(backup, 'SPACE_CHECK_SECONDS', 0.1)
+
+
+def test_a_command_is_stopped_when_its_disk_fills(full_disk, tmp_path):
+    import time
+    start = time.monotonic()
+    with pytest.raises(backup.OutOfSpace) as failure:
+        backup.run_subprocess_cmd(['sleep', '30'], space_in=str(tmp_path))
+    assert failure.value.folder == str(tmp_path)
+    assert time.monotonic() - start < 10
+
+
+def test_a_command_with_room_runs_to_the_end(tmp_path):
+    assert backup.run_subprocess_cmd(['true'], space_in=str(tmp_path)) == 0
+    assert backup.run_subprocess_cmd(['false'], space_in=str(tmp_path)) == 1
+
+
+def test_export_out_of_space_cleans_up(protected, tmp_path, full_disk):
+    before = export_dirs()
+    with pytest.raises(backup.OutOfSpace):
+        backup.export_revision(*protected.args, latest_revision(protected),
+                               str(tmp_path), 'pw')
+    assert export_dirs() == before
+
+
+def test_export_archive_failure_cleans_up(protected, tmp_path):
+    # a file where the target folder should be: tar cannot write there
+    target = tmp_path / 'not a folder'
+    target.write_text('')
+    before = export_dirs()
+    with pytest.raises(backup.ExportError) as failure:
+        backup.export_revision(*protected.args, latest_revision(protected),
+                               str(target), 'pw')
+    assert failure.value.step == 'archive'
+    assert export_dirs() == before
 
 
 def test_legacy_passwordless_backup_encrypted_with_none(repo):

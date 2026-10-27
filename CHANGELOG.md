@@ -51,6 +51,9 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
   files.
 - The Backup, Restore and Export toolbar icons were missing.
 - The progress window could stay open after an error.
+- Exporting or exploring a moment without enough free space ran forever.
+  It now stops, removes what it wrote and says where space ran out; any
+  other export, explore or task failure is shown too.
 - After a backup or prune with a moment selected, the files of every
   moment were listed at once.
 - Exclusion categories were applied even when switched off.

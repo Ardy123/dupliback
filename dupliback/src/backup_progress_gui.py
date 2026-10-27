@@ -5,10 +5,11 @@ from gi.repository import GLib
 
 
 def run_with_progress(register_gui, unregister_gui, parentWnd, msg, work,
-                      on_done=None, after=None, reports=False):
+                      on_done=None, after=None, reports=False, on_failed=None):
     # shows a progress dialog while work() runs on a thread, then on the gtk
     # thread calls on_done(result), takes the dialog down, calls after(result).
-    # With reports, work(report) can update the dialog's message.
+    # With reports, work(report) can update the dialog's message. If work
+    # raises, the dialog still comes down, on_failed() runs and it is shown.
     progress = GUI(register_gui, unregister_gui, parentWnd, msg)
     if reports:
         task = work
@@ -20,8 +21,22 @@ def run_with_progress(register_gui, unregister_gui, parentWnd, msg, work,
         if after:
             after(result)
         return False
+    def failed(error):
+        if on_failed:
+            on_failed()
+        progress.takedownProgressBar()
+        util.run_message('dialog_task_failed', error=error)
+        return False
+    def run():
+        try:
+            result = work()
+        except Exception as e:
+            logging.exception('task failed')
+            GLib.idle_add(failed, str(e))
+            return
+        GLib.idle_add(finish, result)
     # dialog is up before the thread starts, so finish can always take it down
-    threading.Thread(target=lambda: GLib.idle_add(finish, work())).start()
+    threading.Thread(target=run).start()
     return progress
 
 
