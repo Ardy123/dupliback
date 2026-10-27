@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- message dialogs and texts; {name}s are filled in by the code -->
+<interface>
+  <requires lib="gtk+" version="3.0"/>
+  <object class="GtkMessageDialog" id="dialog_confirm">
+    <property name="can_focus">False</property>
+    <property name="title">dupli.back</property>
+    <property name="window_position">center</property>
+    <property name="message_type">warning</property>
+    <property name="buttons">yes-no</property>
+    <property name="text" translatable="yes">Prune or merge moments?</property>
+    <property name="secondary_text" translatable="yes">These moments will no longer be restorable:
+{dropped}
+
+Up to {freed} can be freed. {rebuilt} moment(s) will be rebuilt in a temporary folder and checked, which takes about {hours:.1f} hours; the files you back up are not touched. The backup is changed only once the rebuilt moments pass the checks.</property>
+    <child internal-child="message_area">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <child>
+          <object class="GtkLabel" id="label_space">
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">Rebuilding needs up to about {needed} of temporary space in {staging}; {free} is free.</property>
+            <property name="wrap">True</property>
+            <property name="max_width_chars">50</property>
+            <property name="xalign">0</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="label_admin">
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">{foreign} files belong to other users, so rebuilding runs with administrator rights and will ask for the administrator password. Everything dupli.back creates stays yours.</property>
+            <property name="wrap">True</property>
+            <property name="max_width_chars">50</property>
+            <property name="xalign">0</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkMessageDialog" id="dialog_done">
+    <property name="can_focus">False</property>
+    <property name="title">dupli.back</property>
+    <property name="window_position">center</property>
+    <property name="message_type">info</property>
+    <property name="buttons">close</property>
+    <property name="text" translatable="yes">Pruning or merging finished</property>
+    <property name="secondary_text" translatable="yes">{freed} was freed on the drive.</property>
+  </object>
+  <object class="GtkMessageDialog" id="dialog_delete_first">
+    <property name="can_focus">False</property>
+    <property name="title">dupli.back</property>
+    <property name="window_position">center</property>
+    <property name="message_type">warning</property>
+    <property name="buttons">yes-no</property>
+    <property name="text" translatable="yes">Remove the old moments first?</property>
+    <property name="secondary_text" translatable="yes">The drive does not have room for the rebuilt moments ({needed}) next to the old ones. They can be applied by deleting the old moments first; until that finishes the only copy of the changed moments is in {staging}.</property>
+  </object>
+  <object class="GtkMessageDialog" id="dialog_error">
+    <property name="can_focus">False</property>
+    <property name="title">dupli.back</property>
+    <property name="window_position">center</property>
+    <property name="message_type">error</property>
+    <property name="buttons">close</property>
+    <property name="text" translatable="yes">Prune or merge stopped</property>
+    <property name="secondary_text" translatable="yes">{error}</property>
+  </object>
+  <object class="GtkMessageDialog" id="dialog_resume">
+    <property name="can_focus">False</property>
+    <property name="title">dupli.back</property>
+    <property name="window_position">center</property>
+    <property name="message_type">warning</property>
+    <property name="buttons">none</property>
+    <property name="text" translatable="yes">Pruning or merging moments was interrupted</property>
+    <property name="secondary_text" translatable="yes">The backup was being changed when dupli.back stopped. Finish the change, or undo it to put the backup back as it was.</property>
+    <child internal-child="vbox">
+      <object class="GtkBox">
+        <property name="can_focus">False</property>
+        <child internal-child="action_area">
+          <object class="GtkButtonBox">
+            <property name="can_focus">False</property>
+            <child>
+              <object class="GtkButton" id="button_undo">
+                <property name="label" translatable="yes">Undo</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkButton" id="button_finish">
+                <property name="label" translatable="yes">Finish</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+    <action-widgets>
+      <action-widget response="2">button_undo</action-widget>
+      <action-widget response="1">button_finish</action-widget>
+    </action-widgets>
+  </object>
+  <object class="GtkMessageDialog" id="dialog_full_postponed">
+    <property name="can_focus">False</property>
+    <property name="title">dupli.back</property>
+    <property name="window_position">center</property>
+    <property name="message_type">info</property>
+    <property name="buttons">close</property>
+    <property name="text" translatable="yes">Full backup postponed</property>
+    <property name="secondary_text" translatable="yes">A new full backup is due (the last one is over a year old), but it may not fit on the drive, so an incremental backup was made. Prune or merge old moments to free space.</property>
+  </object>
+  <!-- texts used outside the dialogs -->
+  <object class="GtkLabel" id="text_full">
+    <property name="label" translatable="yes">full</property>
+  </object>
+  <object class="GtkLabel" id="text_incremental">
+    <property name="label" translatable="yes">incremental</property>
+  </object>
+  <object class="GtkLabel" id="text_selected">
+    <property name="label" translatable="yes">{picked} of {total} moments selected.</property>
+  </object>
+  <object class="GtkLabel" id="text_none_selected">
+    <property name="label" translatable="yes">No moments selected.</property>
+  </object>
+  <object class="GtkLabel" id="text_estimating_task">
+    <property name="label" translatable="yes">estimating the space freed</property>
+  </object>
+  <object class="GtkLabel" id="text_estimating">
+    <property name="label" translatable="yes">Estimating, Please Wait</property>
+  </object>
+  <object class="GtkLabel" id="text_pruning_task">
+    <property name="label" translatable="yes">pruning moments</property>
+  </object>
+  <object class="GtkLabel" id="text_pruning">
+    <property name="label" translatable="yes">Pruning, Please Wait</property>
+  </object>
+  <object class="GtkLabel" id="text_merging_task">
+    <property name="label" translatable="yes">merging moments</property>
+  </object>
+  <object class="GtkLabel" id="text_merging">
+    <property name="label" translatable="yes">Merging, Please Wait</property>
+  </object>
+  <object class="GtkLabel" id="text_applying_task">
+    <property name="label" translatable="yes">applying the changes</property>
+  </object>
+  <object class="GtkLabel" id="text_applying">
+    <property name="label" translatable="yes">Applying, Please Wait</property>
+  </object>
+  <object class="GtkLabel" id="text_finishing_task">
+    <property name="label" translatable="yes">finishing an interrupted change</property>
+  </object>
+  <object class="GtkLabel" id="text_finishing">
+    <property name="label" translatable="yes">Finishing, Please Wait</property>
+  </object>
+  <object class="GtkLabel" id="progress_ready">
+    <property name="label" translatable="yes">Getting ready</property>
+  </object>
+  <object class="GtkLabel" id="progress_unpack">
+    <property name="label" translatable="yes">Moment {moment} of {of} ({when}): unpacking it into a temporary folder</property>
+  </object>
+  <object class="GtkLabel" id="progress_save">
+    <property name="label" translatable="yes">Moment {moment} of {of} ({when}): saving it in the new history</property>
+  </object>
+  <object class="GtkLabel" id="progress_check_new">
+    <property name="label" translatable="yes">Moment {moment} of {of} ({when}): checking the new copy</property>
+  </object>
+  <object class="GtkLabel" id="progress_check_old">
+    <property name="label" translatable="yes">Moment {moment} of {of} ({when}): checking it against the original</property>
+  </object>
+  <object class="GtkLabel" id="progress_save_and_old">
+    <property name="label" translatable="yes">Moment {moment} of {of} ({when}): saving it in the new history, and checking it against the original</property>
+  </object>
+  <object class="GtkLabel" id="progress_check_new_and_old">
+    <property name="label" translatable="yes">Moment {moment} of {of} ({when}): checking the new copy, and checking it against the original</property>
+  </object>
+  <object class="GtkLabel" id="progress_check_history">
+    <property name="label" translatable="yes">Checking the new history</property>
+  </object>
+</interface>

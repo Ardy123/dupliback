@@ -51,12 +51,16 @@ def test_run_all_backups_runs_every_known_backup(monkeypatch):
 @pytest.fixture
 def passing_backup(monkeypatch):
     # a backup that passes all assertions, with the duplicity run recorded
-    runs = []
+    class Runs(list):
+        reports = None
+    runs = Runs()
+    reports = runs.reports = []
     monkeypatch.setattr(backup, 'test_backup_assertions', lambda *args: True)
     monkeypatch.setattr(
         backup, 'backup',
-        lambda uuid, host, path, password:
-            runs.append((uuid, host, path, password)))
+        lambda uuid, host, path, password, report=None:
+            runs.append((uuid, host, path, password))
+            or reports.append(report))
     monkeypatch.setattr(backup, 'upgrade_password_hash', lambda *args: False)
     return runs
 
@@ -66,6 +70,8 @@ def test_run_backup_defaults_to_this_host(passing_backup, monkeypatch):
                         lambda *args: {'password_protect': False})
     dupliback.run_backup('U', '/src')
     assert passing_backup == [('U', backup.get_hostname(), '/src', None)]
+    # a postponed full backup is printed
+    assert passing_backup.reports == [print]
 
 
 def test_run_backup_without_password_is_skipped(passing_backup, monkeypatch,
@@ -97,7 +103,7 @@ def test_run_backup_reports_failures(monkeypatch, capsys):
     monkeypatch.setattr(backup, 'test_backup_assertions', lambda *args: True)
     monkeypatch.setattr(backup, 'get_preferences',
                         lambda *args: {'password_protect': False})
-    def failing_backup(*args):
+    def failing_backup(*args, **kwargs):
         raise RuntimeError('disk on fire')
     monkeypatch.setattr(backup, 'backup', failing_backup)
     dupliback.run_backup('U', '/src', 'h')

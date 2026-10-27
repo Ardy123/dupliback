@@ -2,6 +2,50 @@
 <!-- Generated with glade 3.22.2 -->
 <interface>
   <requires lib="gtk+" version="3.0"/>
+  <object class="GtkMenu" id="menu_files">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="menuitem_restore_selection">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Restore Selection</property>
+      </object>
+    </child>
+  </object>
+  <object class="GtkMenu" id="menu_moment">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkMenuItem" id="menuitem_restore_moment">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Restore Moment</property>
+      </object>
+    </child>
+    <child>
+      <object class="GtkMenuItem" id="menuitem_prune_moment">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="label" translatable="yes">Prune Moment</property>
+      </object>
+    </child>
+  </object>
+  <object class="GtkImage" id="image_backup">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="pixbuf">../images/Backup.png</property>
+  </object>
+  <object class="GtkImage" id="image_restore">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="pixbuf">../images/Restore.png</property>
+  </object>
+  <object class="GtkImage" id="image_export">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="pixbuf">../images/package.png</property>
+  </object>
   <object class="GtkWindow" id="window">
     <property name="can_focus">False</property>
     <property name="window_position">center</property>
@@ -21,6 +65,7 @@
             <property name="can_focus">False</property>
             <child>
               <object class="GtkToolButton" id="toolbutton_backup">
+                <property name="icon_widget">image_backup</property>
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="tooltip_text" translatable="yes">bookmark a new moment (backup)</property>
@@ -35,6 +80,7 @@
             </child>
             <child>
               <object class="GtkToolButton" id="toolbutton_restore">
+                <property name="icon_widget">image_restore</property>
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
                 <property name="can_focus">False</property>
@@ -50,6 +96,7 @@
             </child>
             <child>
               <object class="GtkToolButton" id="toolbutton_export">
+                <property name="icon_widget">image_export</property>
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
                 <property name="can_focus">False</property>
@@ -58,6 +105,22 @@
                 <property name="is_important">True</property>
                 <property name="label" translatable="yes">Export</property>
                 <property name="use_underline">True</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="homogeneous">True</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkToolButton" id="toolbutton_prune">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="has_tooltip">True</property>
+                <property name="tooltip_text" translatable="yes">prune moments, or merge consecutive ones, to free space</property>
+                <property name="is_important">True</property>
+                <property name="label" translatable="yes">Prune</property>
+                <property name="use_underline">True</property>
+                <property name="stock_id">gtk-delete</property>
               </object>
               <packing>
                 <property name="expand">False</property>

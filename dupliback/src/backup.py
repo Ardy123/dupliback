@@ -24,6 +24,11 @@ PREFERENCES_FILE = 'dupliback_preferences.pickle'
 PASSWORD_HASH_ITERATIONS = 100000
 # the cli turns this off: it has no gui to show errors in
 SHOW_ERROR_DIALOGS = True
+# written on the drive by merge.py while a prune or squash is in progress
+REWRITE_JOURNAL = 'dupliback_rewrite.json'
+# a new chain is started when the last full backup is older than this
+FULL_BACKUP_EVERY = '1Y'
+FULL_BACKUP_SECONDS = 365 * 24 * 3600
 DEV_BY_UUID = '/dev/disk/by-uuid/'
 
 UDEVADM_RGX = re.compile(r'(N:|E: DEVLINKS=|E: DEVNAME=)\s*(.*)')
@@ -117,6 +122,9 @@ def get_backup_assertion_error(uuid, host, path, test_exists=True):
         backup_path = get_backupPath(uuid, host, path)
         if not os.path.exists(backup_path):
             return 'not os.path.exists("%s")' % backup_path
+        if os.path.exists(os.path.join(backup_path, REWRITE_JOURNAL)):
+            return ('a prune or squash of this backup is in progress; finish '
+                    'or undo it first')
     return None
 
 def test_backup_assertions(uuid, host, path, test_exists=True):
@@ -325,13 +333,39 @@ def _backup_args(duplicity_dir, path):
                         '--allow-source-mismatch']
 
 
-def backup(uuid, host, path, password):
+def source_size(path):
+    # bytes of the files under path, an upper bound for a full backup
+    return sum(os.lstat(os.path.join(root, name)).st_size
+               for root, dirs, files in os.walk(path) for name in files)
+
+
+def full_backup_status(uuid, host, path):
+    # (due, fits): due a year after the last full backup; fits when the files
+    # to back up fit in the drive's free space
+    fulls = [rev['epoch'] for rev in get_revisions(uuid, host, path)
+             if rev['type'] == 'Full']
+    if not fulls or time.time() - max(fulls) < FULL_BACKUP_SECONDS:
+        return False, True
+    free = shutil.disk_usage(get_backupPath(uuid, host, path)).free
+    return True, source_size(path) < free
+
+
+def backup(uuid, host, path, password, report=None):
+    # an incremental backup, or a new full one once the last is a year old;
+    # report(message) is told when a due full backup could not fit
     assert test_backup_assertions(uuid, host, path)
     duplicity_dir = get_backupPath(uuid, host, path)
     # create the backup dir if missing
     if not os.path.exists(duplicity_dir):
         init_backup(uuid, host, path, password)
     exclusions, operands = _backup_args(duplicity_dir, path)
+    due, fits = full_backup_status(uuid, host, path)
+    if due and fits:
+        exclusions = exclusions + ['--full-if-older-than', FULL_BACKUP_EVERY]
+    elif due and report:
+        report('A new full backup is due (the last one is over a year old), '
+               'but it may not fit on the drive, so an incremental backup '
+               'was made. Prune or merge old moments to free space.')
     return run_duplicity(password, exclusions, operands)
 
 
@@ -347,16 +381,22 @@ def get_properties(uuid, host, path):
     return _read_properties(get_backupPath(uuid, host, path))
 
 
+def write_atomic(fn, data):
+    # writes a temp file and renames it, so pulling the drive mid write never
+    # leaves a truncated file
+    tmp_fn = fn + '.tmp'
+    with open(tmp_fn, 'wb') as f:
+        f.write(data)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_fn, fn)
+
+
 def _write_properties(duplicity_dir, properties):
-    # backups are only discovered through this file, so write a temp file
-    # first rather than risk truncating it if the drive is pulled mid write
-    tmp_fn = os.path.join(duplicity_dir, PROPERTIES_FILE + '.tmp')
+    # backups are only discovered through this file
     try:
-        with open(tmp_fn, 'wb') as f:
-            pickle.dump(properties, f)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp_fn, os.path.join(duplicity_dir, PROPERTIES_FILE))
+        write_atomic(os.path.join(duplicity_dir, PROPERTIES_FILE),
+                     pickle.dumps(properties))
     except Exception as e:
         logging.error(e)
         return False

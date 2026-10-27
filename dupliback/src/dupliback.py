@@ -43,7 +43,7 @@ def run_backup(uuid, path, host=None):
             return
         backup.upgrade_password_hash(uuid, host, path, password)
     print('---=== starting backup:', uuid, path, '===---')
-    try: backup.backup(uuid, host, path, password)
+    try: backup.backup(uuid, host, path, password, report=print)
     except: traceback.print_exc()
 
 def launch_select_backup_gui():

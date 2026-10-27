@@ -12,9 +12,24 @@ pytestmark = pytest.mark.skipif(shutil.which('duplicity') is None,
 
 
 class FakeEvent(object):
-    def __init__(self, button):
+    def __init__(self, button, x=0, y=0):
         self.button = button
         self.time = 0
+        self.x = x
+        self.y = y
+
+
+def click_on_row(treeview, row, button=3):
+    # an event at the middle of a row, once the window has laid it out
+    from gi.repository import Gtk
+    path = Gtk.TreePath.new_from_indices([row])
+    area = lambda: treeview.get_cell_area(path, treeview.get_column(0))
+    wait_until(lambda: area().height > 0)
+    return FakeEvent(button, area().x + 1, area().y + area().height // 2)
+
+
+def menu_labels(menu):
+    return [item.get_label() for item in menu.get_children()]
 
 
 def open_manage_window(repo, gui_env):
@@ -108,16 +123,35 @@ def test_restore_selected_file(manage, gui_env):
     assert read(target) == 'v1'
 
 
-def test_restore_whole_revision_from_context_menu(manage, gui_env):
+def test_moment_menu_restores_the_clicked_moment(manage, gui_env):
     select_first_revision(manage, gui_env)
     target = os.path.join(manage.path, 'small.bin')
     os.remove(target)
     revisions = manage.gtkbuilder.get_object('treeview_revisions')
-    assert manage.revview_mouse_notify(revisions, FakeEvent(3))
     assert not manage.revview_mouse_notify(revisions, FakeEvent(1))
-    manage.restore_selection(None, None)
+    assert manage.revview_mouse_notify(revisions, click_on_row(revisions, 0))
+    menu, = gui_env.popups
+    assert menu_labels(menu) == ['Restore Moment', 'Prune Moment']
+    menu.get_children()[0].activate()
     gui_env.wait_for_takedowns(2)
     assert os.path.isfile(target)
+
+
+def test_right_click_does_not_list_the_moments_files(manage, gui_env):
+    revisions = manage.gtkbuilder.get_object('treeview_revisions')
+    assert manage.revview_mouse_notify(revisions, click_on_row(revisions, 0))
+    wait_until(lambda: True)
+    model, selected = revisions.get_selection().get_selected()
+    assert selected is None
+    assert gui_env.takedowns == []
+    assert len(manage.gtkbuilder.get_object('running_tasks').get_model()) == 0
+
+
+def test_right_click_below_the_moments_opens_no_menu(manage, gui_env):
+    revisions = manage.gtkbuilder.get_object('treeview_revisions')
+    click_on_row(revisions, 0)
+    assert manage.revview_mouse_notify(revisions, FakeEvent(3, 1, 5000))
+    assert gui_env.popups == []
 
 
 def test_file_context_menu_needs_a_selection(manage, gui_env):
@@ -205,3 +239,15 @@ def test_running_task_timer_updates_elapsed_time(empty_manage, gui_env):
                   ''))
     wait_until(lambda: tasks[0][3] != '', timeout=10)
     assert tasks[0][3].startswith('1m')
+
+
+def test_every_toolbar_button_has_an_icon(empty_manage):
+    from gi.repository import Gtk
+    toolbar = empty_manage.gtkbuilder.get_object('toolbar1')
+    buttons = [child for child in toolbar.get_children()
+               if isinstance(child, Gtk.ToolButton)]
+    missing = [button.get_label() for button in buttons
+               if not button.get_stock_id()
+               and not (button.get_icon_widget()
+                        and button.get_icon_widget().get_pixbuf())]
+    assert buttons and missing == []

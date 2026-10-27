@@ -11,75 +11,61 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
 ## [0.5.0] - Unreleased
 
 ### Security
-- Password protected backups are encrypted again. Since 0.3.0 the encryption flag
-  was inverted, so protected backups were written unencrypted and password-less
-  backups were encrypted with the literal passphrase `None`. Existing backups stay
-  readable; volumes already written unencrypted stay unencrypted until the backup
-  is recreated.
-- Passwords are stored as salted PBKDF2-SHA256 hashes instead of unsalted MD5.
-  Existing MD5 hashes still work and are upgraded the first time the correct
-  password is entered.
-- duplicity and other tools are run without a shell and the passphrase is passed
-  through the environment, so paths and passwords cannot inject commands or show
-  up in the process list.
+- Password protected backups are encrypted again; since 0.3.0 they were
+  written unencrypted. Existing backups stay readable, but volumes already
+  written stay unencrypted until the backup is recreated.
+- Passwords are stored as salted PBKDF2-SHA256 hashes instead of MD5. Existing
+  passwords are upgraded the next time they are entered.
+- Passwords no longer show up in the process list, and paths or passwords can
+  no longer be used to run commands.
 
 ### Added
-- Test suite under `dupliback/test` with 80%+ coverage, a `requirements.txt` and
-  `setup_venv.sh` for a `.venv` development environment.
-- RPM package build (`build_rpm.sh`, `packaging/rpm/dupliback.spec`).
-- GitHub Actions: tests and package builds run on every pull request, and
-  publishing a release attaches the `.deb` and `.rpm` to it.
-- The command line backup (`dupliback.py <uuid> <path>` and `--backup-all`) reads
-  the password of protected backups from `$PASSPHRASE` or prompts for it.
-- Unreleased builds show their version as `X.Y.Z-<short commit>`; `build_deb.sh`
-  and `build_rpm.sh` take `-r` to build a release.
-- Listing a moment's files reads the signature files directly instead of
-  running `duplicity list-current-files`: about 5 minutes instead of about an
-  hour on a 14-year, 67-moment backup, and instant when the same moment is
-  viewed again. It works without duplicity's cache (e.g. on a new machine) and
-  falls back to duplicity if the signatures can't be read.
+- **Prune and merge moments**: a new Prune button lists every moment with its
+  size. Prune removes moments; Merge combines consecutive moments into the
+  newest one selected. A single moment can also be pruned by right-clicking
+  it. Moments are rebuilt and checked before anything on the drive changes,
+  and an interrupted change can be finished or undone the next time the
+  backup is opened. This frees space and makes listing files and backing up
+  faster. Backups with other users' files ask for the administrator password.
+- A new full backup is made once the last one is over a year old. If the
+  drive may not have room for it, an incremental backup is made instead and
+  you are asked to prune or merge old moments.
+- Listing a moment's files is much faster (about 5 minutes instead of an hour
+  on a large 14-year backup) and instant when the moment is viewed again. It
+  also works on a new machine without duplicity's cache.
+- Command line backups work with password protected backups, reading the
+  password from `$PASSPHRASE` or asking for it.
+- An RPM package for Fedora.
 
 ### Changed
 - duplicity 3.0.4 or newer is required (Kubuntu/Ubuntu 26.04, Debian 13,
-  Fedora 43+). The packages depend on it, and CI runs the tests on Ubuntu
-  26.04 and Debian 13. Backups made by older duplicity versions stay
-  readable.
-- Sources moved to `dupliback/src`.
-- The version is defined only in `dupliback/src/settings.py` instead of being
-  repeated in the deb control file, the about dialog and the desktop files.
-- About dialog copyright updated to 2026.
-- Drive change notifications are handled on the GTK main loop instead of a second
-  main loop on its own thread.
-- Duplicity's cache and the app's own cache are never backed up, whatever the
-  "exclude cache" preference says.
+  Fedora 43+). Backups made with older versions stay readable.
+- dupli.back's and duplicity's caches are never backed up.
 
 ### Fixed
-- Listing backups no longer fails on systems without `/dev/disk/by-uuid`
-  (containers, some virtual machines).
-- Moments are selected by their exact UTC time. The previous time strings had
-  no time zone, so during summer time restore, export and explore resolved
-  them an hour off.
-- Exclusion categories were always applied, even when switched off, and empty
-  custom filters added an empty exclusion.
-- The "exclude files over N GB" option could not be set (its spin button had no
-  range) and was never passed to duplicity.
-- Restoring single files failed on duplicity 2.0 and later, and restoring onto
-  existing files failed on duplicity 3.
-- Paths containing spaces were cut short in the file list and could not be
+- Backups were not listed on systems without `/dev/disk/by-uuid`, such as
+  containers and some virtual machines.
+- During summer time, restore, export and explore used a moment an hour off.
+- Right-clicking a moment or a file crashed. Right-clicking a moment now only
+  opens its menu (**Restore Moment**, **Prune Moment**) without listing its
+  files.
+- The Backup, Restore and Export toolbar icons were missing.
+- The progress window could stay open after an error.
+- After a backup or prune with a moment selected, the files of every
+  moment were listed at once.
+- Exclusion categories were applied even when switched off.
+- The "exclude files over N GB" option could not be set and had no effect.
+- Restoring single files failed with duplicity 2.0 and later, and restoring
+  over existing files failed with duplicity 3.
+- Paths with spaces were cut short in the file list and could not be
   restored.
 - The Create Backup window crashed when opened.
-- Random GTK crashes caused by GTK being used from worker threads.
-- Creating a backup that already exists closed the whole application.
-- Status showed the new and deleted file counts under each other's labels and
-  ignored the exclusions.
-- Exporting a revision put absolute paths in the archive and left temporary
-  directories behind.
-- Drive names from udev links were not shown.
-- The packages now depend on everything the app uses: `python3-dbus`, the GTK
-  and GdkPixbuf typelibs, `udev` (drive detection), `mount` and `xdg-utils`
-  (opening exports); the RPM requires the commands by path. The deb's
-  section, priority and homepage are corrected, and its version always
-  matches the application version.
+- Random crashes.
+- Creating a backup that already exists closed the application.
+- Status swapped the new and deleted file counts and ignored exclusions.
+- Exported archives held absolute paths and left temporary folders behind.
+- Some drives were shown without their names.
+- Installing the package now installs everything dupli.back needs.
 
 ## [0.4.0] - 2023-02-09
 

@@ -137,6 +137,32 @@ def protected(repo):
     return repo
 
 
+BASE = 1700000000
+STEP = 100
+
+
+def build_moments(repo, password, steps, legacy=False):
+    # backs up repo.path once per step, step k at BASE + STEP * k, with tiny
+    # volumes so big files span several; legacy encrypts password-less
+    # moments with the passphrase 'None', as app versions 0.3.0 - 0.4.0 did
+    backup.init_backup(*repo.args, password)
+    uri = backup.get_backupUri(*repo.args)
+    epochs = []
+    for k, step in enumerate(steps):
+        step(repo.path)
+        epoch = BASE + STEP * k
+        options = ['--current-time', str(epoch), '--volsize', '1']
+        operands = [repo.path, uri, '--allow-source-mismatch']
+        if legacy and k < len(steps) // 2:
+            env = dict(os.environ, PASSPHRASE='None')
+            assert backup.run_subprocess_cmd(
+                ['duplicity'] + options + operands, env) == 0
+        else:
+            assert backup.run_duplicity(password, options, operands) == 0
+        epochs.append(epoch)
+    return epochs
+
+
 # duplicity compares mtimes to the second, so a change made in the same second
 # as a backup may not count; tests that check change counts pin mtimes.
 PINNED_MTIME = 1600000000
@@ -201,10 +227,15 @@ class GuiEnv(object):
     # answers modal dialogs, records actions that would touch the desktop
     def __init__(self):
         self.dialog_response = None
+        # answers used, in order, before dialog_response
+        self.answers = []
         self.dialogs_run = []
+        # the shown texts of each message dialog run
+        self.messages = []
         self.opened_files = []
         self.takedowns = []
         self.chosen_folder = None
+        self.popups = []
         self.guis = set()
 
     def register(self, gui):
@@ -230,11 +261,22 @@ def gui_env(monkeypatch):
     env.dialog_response = Gtk.ResponseType.OK
     def run_dialog(dialog):
         env.dialogs_run.append(dialog)
-        return env.dialog_response
+        if isinstance(dialog, Gtk.MessageDialog):
+            env.messages.append([
+                label.get_text() for label in
+                dialog.get_message_area().get_children()
+                if label.get_visible()])
+        return env.answers.pop(0) if env.answers else env.dialog_response
     monkeypatch.setattr(Gtk.Dialog, 'run', run_dialog)
     monkeypatch.setattr(Gtk.FileChooserDialog, 'get_filename',
                         lambda self: env.chosen_folder)
-    monkeypatch.setattr(Gtk.Menu, 'popup', lambda self, *args: None)
+    real_popup = Gtk.Menu.popup_at_pointer
+    def popup(menu, event):
+        # the real call with no trigger event checks the api; then closed
+        env.popups.append(menu)
+        real_popup(menu, None)
+        menu.popdown()
+    monkeypatch.setattr(Gtk.Menu, 'popup_at_pointer', popup)
     monkeypatch.setattr(util, 'open_file', env.opened_files.append)
     takedown = backup_progress_gui.GUI.takedownProgressBar
     def record_takedown(self):

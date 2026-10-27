@@ -64,6 +64,34 @@ def message_dialog(message_type, buttons, text, secondary_markup):
     return response
 
 
+def _load_one(name, glade_file):
+    # builds only that object, so unused dialogs are never created
+    builder = Gtk.Builder()
+    builder.add_objects_from_file(
+        os.path.join(RUN_FROM_DIR, 'glade', glade_file), [name])
+    return builder
+
+
+def text(name, glade_file='messages.glade'):
+    # a translatable text kept as a label in a glade file
+    return _load_one(name, glade_file).get_object(name).get_label()
+
+
+def run_message(name, show=(), glade_file='messages.glade', **fields):
+    # runs a message dialog from a glade file and returns the response; the
+    # labels named in show are shown too, and {field}s are filled in
+    builder = _load_one(name, glade_file)
+    dialog = builder.get_object(name)
+    for label in show:
+        builder.get_object(label).show()
+    for label in filter(Gtk.Widget.get_visible,
+                        dialog.get_message_area().get_children()):
+        label.set_text(label.get_text().format(**fields))
+    response = dialog.run()
+    dialog.destroy()
+    return response
+
+
 def open_file(fn):
     subprocess.Popen(['xdg-open', fn])
   
