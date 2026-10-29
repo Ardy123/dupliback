@@ -8,7 +8,9 @@ the about dialog all read it from there. Builds of an unreleased version are
 labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
 `vX.Y.Z`. The version being worked on is listed as "Unreleased" until its release.
 
-## [0.5.0] - Unreleased
+## [0.6.0] - Unreleased
+
+## [0.5.0] - 2026-10-29
 
 ### Security
 - Password protected backups are encrypted again; since 0.3.0 they were
@@ -167,5 +169,6 @@ First release, forked from flyback and rebuilt on top of duplicity.
   (issue 2).
 - deb build script problems (issues 6 and 7).
 
-[0.5.0]: https://github.com/Ardy123/dupliback/compare/v0.3.0...HEAD
+[0.6.0]: https://github.com/Ardy123/dupliback/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Ardy123/dupliback/compare/v0.3.0...v0.5.0
 [0.3.0]: https://github.com/Ardy123/dupliback/releases/tag/v0.3.0
