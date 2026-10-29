@@ -15,3 +15,6 @@ class GUI(object):
         # force this window ontop
         self.main_window.set_transient_for( parentWnd )
         self.main_window.show()
+        # with header bar dialogs show() focuses a selectable label, which
+        # then shows a text cursor
+        self.main_window.set_focus(None)

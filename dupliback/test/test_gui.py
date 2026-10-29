@@ -82,7 +82,7 @@ def test_opening_backup_upgrades_legacy_hash(repo, monkeypatch):
         model.clear()
         treeview.get_selection().select_iter(
             model.append((None, 'test', True, *repo.args, legacy_hash)))
-        gui.launchManageBackupGui('pw')
+        gui.launchManageBackupGui(gui.selected_backup(), 'pw')
     run_in_main_loop(build)
     assert opened
     assert stored_hash(repo).startswith('pbkdf2_sha256$')

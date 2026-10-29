@@ -4,6 +4,7 @@ import os
 import pytest
 
 import backup
+from conftest import wait_until
 
 
 @pytest.fixture
@@ -134,6 +135,25 @@ def test_open_protected_backup_asks_for_password(known_drive, gui_env,
                                             gui_env.unregister,
                                             *known_drive.args, 'pw'))]
     gui.passwordCancel()
+
+
+def test_open_protected_backup_after_list_refresh(known_drive, gui_env,
+                                                  monkeypatch,
+                                                  recorded_windows):
+    # any device signal rebuilds the list and drops the selection, which
+    # used to open nothing and quit the app once the password was entered
+    import password_managment
+    backup.init_backup(*known_drive.args, 'pw')
+    gui = select_window(gui_env, [properties(known_drive)], monkeypatch)
+    select_row(gui, 0)
+    gui.open_backup()
+    gui.refresh_device_list()
+    dialog, = gui_env.find(password_managment.GUI)
+    dialog.check_password_window['password_entry_question'].set_text('pw')
+    dialog.passwordCheck_okClicked()
+    assert recorded_windows == [('manage', (gui_env.register,
+                                            gui_env.unregister,
+                                            *known_drive.args, 'pw'))]
 
 
 def test_delete_backup_after_confirmation(known_drive, gui_env, monkeypatch):
@@ -283,6 +303,53 @@ def test_password_check_cancel(gui_env):
                                     lambda: cancelled.append(1))
     dialog.passwordCheck_cancelClicked()
     assert cancelled == [1]
+
+
+def test_enter_in_password_check_presses_ok(gui_env):
+    import password_managment
+    accepted = []
+    dialog = password_managment.GUI(gui_env.register, gui_env.unregister)
+    dialog.passwordCheckDialog_show(None, backup.gen_passwordEncrypt('pw'),
+                                    accepted.append, lambda: None)
+    entry = dialog.check_password_window['password_entry_question']
+    entry.set_text('pw')
+    entry.activate()
+    # a pressed button emits clicked from the main loop
+    wait_until(lambda: accepted, timeout=5)
+    assert accepted == ['pw']
+
+
+def test_enter_in_new_password_presses_ok(new_password):
+    dialog, window, chosen = new_password
+    window['password_entry1'].set_text('one')
+    window['password_entry2'].set_text('two')
+    window['password_entry2'].activate()
+    assert chosen == []
+    window['password_entry2'].set_text('one')
+    window['password_entry2'].activate()
+    wait_until(lambda: chosen, timeout=5)
+    assert chosen == ['one']
+
+
+# --- about dialog
+
+def test_about_dialog_puts_no_cursor_in_its_text(gui_env):
+    # with header bar dialogs (KDE) the only focusable widgets are the
+    # selectable labels, and the focused one showed a text cursor
+    import about_gui
+    from gi.repository import Gtk
+    gtk_settings = Gtk.Settings.get_default()
+    use_header = gtk_settings.get_property('gtk-dialogs-use-header')
+    gtk_settings.set_property('gtk-dialogs-use-header', True)
+    try:
+        about = about_gui.GUI(gui_env.register, gui_env.unregister, None)
+        assert about.main_window.get_header_bar() is not None
+        while Gtk.events_pending():
+            Gtk.main_iteration_do(False)
+        assert not isinstance(about.main_window.get_focus(), Gtk.Label)
+        about.closedButton(about.main_window, 0)
+    finally:
+        gtk_settings.set_property('gtk-dialogs-use-header', use_header)
 
 
 # --- preferences dialog
