@@ -82,10 +82,23 @@ def test_opening_backup_upgrades_legacy_hash(repo, monkeypatch):
         model.clear()
         treeview.get_selection().select_iter(
             model.append((None, 'test', True, *repo.args, legacy_hash)))
-        gui.launchManageBackupGui('pw')
+        gui.launchManageBackupGui(gui.selected_backup(), 'pw')
     run_in_main_loop(build)
     assert opened
     assert stored_hash(repo).startswith('pbkdf2_sha256$')
+
+
+def test_a_failing_task_takes_the_progress_dialog_down(gui_env):
+    import backup_progress_gui
+    failed = []
+    def broken():
+        raise RuntimeError('disk vanished')
+    backup_progress_gui.run_with_progress(
+        lambda g: None, lambda g: None, None, 'testing', broken,
+        on_failed=lambda: failed.append(1))
+    gui_env.wait_for_takedowns(1)
+    assert failed == [1]
+    assert gui_env.messages == [['Something went wrong', 'disk vanished']]
 
 
 def test_progress_dialog_goes_away_while_another_dialog_is_modal():

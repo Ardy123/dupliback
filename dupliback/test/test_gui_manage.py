@@ -184,6 +184,37 @@ def test_export_writes_tarball_and_opens_it(manage, gui_env, tmp_path):
     assert os.path.isfile(gui_env.opened_files[0])
 
 
+@pytest.mark.parametrize('action, title', [
+    ('start_export', 'Export stopped'), ('start_explore', 'Explore stopped')])
+def test_running_out_of_space_is_reported(manage, gui_env, tmp_path,
+                                          monkeypatch, action, title):
+    select_first_revision(manage, gui_env)
+    gui_env.chosen_folder = str(tmp_path)
+    real = shutil.disk_usage
+    monkeypatch.setattr(backup.shutil, 'disk_usage',
+                        lambda path: real(path)._replace(free=0))
+    monkeypatch.setattr(backup, 'SPACE_CHECK_SECONDS', 0.1)
+    getattr(manage, action)()
+    gui_env.wait_for_takedowns(2, timeout=60)
+    title_shown, reason = gui_env.messages[-1]
+    assert title_shown == title
+    assert 'not enough free space' in reason
+    assert gui_env.opened_files == []
+    tasks = manage.gtkbuilder.get_object('running_tasks').get_model()
+    assert len(tasks) == 0
+
+
+def test_failed_restore_of_the_moment_is_reported(manage, gui_env,
+                                                  monkeypatch):
+    select_first_revision(manage, gui_env)
+    monkeypatch.setattr(manage, 'password', 'wrong')
+    manage.start_explore()
+    gui_env.wait_for_takedowns(2, timeout=60)
+    assert gui_env.messages[-1] == [
+        'Explore stopped', 'duplicity could not restore this moment.']
+    assert gui_env.opened_files == []
+
+
 def test_export_cancelled(manage, gui_env):
     from gi.repository import Gtk
     select_first_revision(manage, gui_env)

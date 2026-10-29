@@ -27,15 +27,15 @@ class GUI(object):
             return [model.get_value(entry, column) for column in (3, 4, 5, 6)]
         return None
 
-    def launchManageBackupGui(self, password=None):
-        selected = self.selected_backup()
-        if selected:
-            uuid, host, path, _ = selected
-            if password:
-                backup.upgrade_password_hash(uuid, host, path, password)
-            self.register_gui(manage_backup_gui.GUI(
-                self.register_gui, self.unregister_gui, uuid, host, path,
-                password))
+    def launchManageBackupGui(self, selected, password=None):
+        # selected is passed in: device signals rebuild the list, and with it
+        # the selection, while the password dialog is open
+        uuid, host, path, _ = selected
+        if password:
+            backup.upgrade_password_hash(uuid, host, path, password)
+        self.register_gui(manage_backup_gui.GUI(
+            self.register_gui, self.unregister_gui, uuid, host, path,
+            password))
         self.close()
 
     def passwordCancel(self):
@@ -55,10 +55,12 @@ class GUI(object):
                                                      self.unregister_gui)
                 self.register_gui( passMgntGui )
                 passMgntGui.passwordCheckDialog_show(
-                    self.main_window, pswd, self.launchManageBackupGui,
+                    self.main_window, pswd,
+                    lambda password: self.launchManageBackupGui(selected,
+                                                                password),
                     self.passwordCancel)
             else:
-                self.launchManageBackupGui()
+                self.launchManageBackupGui(selected)
         else:
             logging.info('creating a new archive...')
             self.register_gui(create_backup_gui.GUI(self.register_gui,

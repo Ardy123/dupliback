@@ -36,6 +36,28 @@ class FileTreeBuilder(object):
              self.model.append(self.stack[-1][1], [filename, pathDateLst[1]])])
 
 
+def _reporting_failures(work):
+    # work's result as ('ok', value), or ('failed', error) when the moment
+    # could not be restored or archived
+    def run():
+        try:
+            return 'ok', work()
+        except (backup.OutOfSpace, backup.ExportError) as e:
+            return 'failed', e
+    return run
+
+
+def _opened_or_reported(result, dialog):
+    # opens what an export or explore made, or says why it stopped
+    status, value = result
+    if status == 'ok':
+        return util.open_file(value)
+    name = ('text_no_space' if isinstance(value, backup.OutOfSpace)
+            else 'text_%s_failed' % value.step)
+    util.run_message(dialog,
+                     reason=util.text(name).format(folder=value.folder))
+
+
 class GUI(object):
 
     def close(self, a=None, b=None):
@@ -56,7 +78,8 @@ class GUI(object):
             tasks.remove(row)
         backup_progress_gui.run_with_progress(
             self.register_gui, self.unregister_gui, self.main_window,
-            progress_msg, work, done, after, reports)
+            progress_msg, work, done, after, reports,
+            on_failed=lambda: tasks.remove(row))
 
     def update_toolbar(self):
         # backing up needs this host and drive, and no rewrite in progress
@@ -222,28 +245,26 @@ class GUI(object):
                     self.uuid, self.host, self.path, rev, target_dir,
                     self.password )
                 backup.rmdir(os.path.dirname(tmp_path))
-                if fn:
-                    util.open_file(fn)
-                else:
-                    backup.launch_error('Failed to export revision %s' % rev)
+                return fn
             self.run_task(Gtk.STOCK_FLOPPY,
                           'exporting selected revision to: '+target_dir,
-                          'Exporting Backup, Please Wait', work)
+                          'Exporting Backup, Please Wait',
+                          _reporting_failures(work),
+                          after=lambda result: _opened_or_reported(
+                              result, 'dialog_export_failed'))
         dialog.destroy()
 
     def start_explore(self):
         rev = self.get_selected_revision()
         def work():
-            fn, tmp_path = backup.export_revision(
-                self.uuid, self.host, self.path, rev, None, self.password )
-            if os.path.isdir(tmp_path):
-                util.open_file(tmp_path)
-            else:
-                backup.launch_error(
-                    'Failed to restore revision %s for exploration' % rev)
+            return backup.export_revision(
+                self.uuid, self.host, self.path, rev, None, self.password )[1]
         self.run_task(Gtk.STOCK_DIRECTORY,
                       'preparing folder for exploration of revision: '+rev,
-                      'Exploring Backup, Please Wait', work)
+                      'Exploring Backup, Please Wait',
+                      _reporting_failures(work),
+                      after=lambda result: _opened_or_reported(
+                          result, 'dialog_explore_failed'))
 
     def start_status(self):
         def show_status(status):
