@@ -13,6 +13,7 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
 ### Changed
 - After a release, the release workflow opens a pull request starting
   the next version.
+- The project moved to https://github.com/QVXLabs/dupliback.
 
 ## [0.5.0] - 2026-10-29
 
@@ -173,6 +174,6 @@ First release, forked from flyback and rebuilt on top of duplicity.
   (issue 2).
 - deb build script problems (issues 6 and 7).
 
-[0.6.0]: https://github.com/Ardy123/dupliback/compare/v0.5.0...HEAD
-[0.5.0]: https://github.com/Ardy123/dupliback/compare/v0.3.0...v0.5.0
-[0.3.0]: https://github.com/Ardy123/dupliback/releases/tag/v0.3.0
+[0.6.0]: https://github.com/QVXLabs/dupliback/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/QVXLabs/dupliback/compare/v0.3.0...v0.5.0
+[0.3.0]: https://github.com/QVXLabs/dupliback/releases/tag/v0.3.0

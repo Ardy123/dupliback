@@ -9,7 +9,7 @@ Version:        %{pkg_version}
 Release:        1
 Summary:        dupli.back Backup software
 License:        GPL-2.0-only
-URL:            https://github.com/Ardy123/dupliback
+URL:            https://github.com/QVXLabs/dupliback
 Packager:       QVXLabs LLC <afalls@qvxlabs.com>
 BuildArch:      noarch
 Requires:       python3, python3-gobject, python3-dbus, gtk3, gdk-pixbuf2

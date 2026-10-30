@@ -9,7 +9,7 @@ from conftest import SRC_DIR
 
 ROOT = os.path.dirname(os.path.dirname(SRC_DIR))
 SCRIPT = os.path.join(ROOT, 'packaging', 'start_next_version.py')
-URL = 'https://github.com/Ardy123/dupliback/compare'
+URL = 'https://github.com/QVXLabs/dupliback/compare'
 
 
 def read(path):

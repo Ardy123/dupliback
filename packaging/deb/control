@@ -1,7 +1,7 @@
 Section: utils
 Priority: optional
 Maintainer: QVXLabs LLC <afalls@qvxlabs.com>
-Homepage: https://github.com/Ardy123/dupliback
+Homepage: https://github.com/QVXLabs/dupliback
 Package: dupli.back
 Architecture: all
 Version: @VERSION@
