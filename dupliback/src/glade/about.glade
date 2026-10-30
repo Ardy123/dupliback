@@ -9,7 +9,7 @@
     <property name="type_hint">normal</property>
     <property name="program_name">dupli.back</property>
     <property name="copyright" translatable="yes">(c) 2026 QVXLabs LLC</property>
-    <property name="website">https://github.com/Ardy123/dupliback</property>
+    <property name="website">https://github.com/QVXLabs/dupliback</property>
     <property name="website_label" translatable="yes">dupli.back project website</property>
     <property name="logo">../images/duplibackTitle.png</property>
     <property name="license_type">gpl-2-0</property>
