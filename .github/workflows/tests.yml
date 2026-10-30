@@ -35,6 +35,8 @@ jobs:
             gir1.2-gtk-3.0 duplicity udev xvfb
 
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Trust the checkout and show duplicity's version
         # the container runs as root, the checkout is owned by the runner
@@ -56,6 +58,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install packaging tools
         run: |

@@ -5,7 +5,7 @@ on:
     types: [published]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   tests:
@@ -15,10 +15,14 @@ jobs:
     name: attach packages
     needs: tests
     runs-on: ubuntu-24.04
+    # uploads the packages to the release
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
 
       - name: Check the tag matches the application version
         env:
