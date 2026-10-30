@@ -1,0 +1,15 @@
+# Only the GitHub Actions used in CI. requirements.txt lists minimums that
+# track the distro packages (see MIN_DUPLICITY_VERSION), so pip updates
+# raising them would be wrong; Dependabot alerts still cover them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    # one pull request, and one CI run, for all the actions at once
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

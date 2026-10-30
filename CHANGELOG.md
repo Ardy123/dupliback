@@ -10,6 +10,11 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
 
 ## [0.6.0] - Unreleased
 
+### Security
+- Added a security policy (`SECURITY.md`) for reporting vulnerabilities
+  privately, and Dependabot updates for the GitHub Actions used in CI.
+- Workflow jobs only get write access where they need it.
+
 ### Changed
 - After a release, the release workflow opens a pull request starting
   the next version.
