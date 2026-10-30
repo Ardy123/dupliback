@@ -34,7 +34,7 @@ jobs:
           apt-get install -y git python3-venv python3-gi python3-dbus \
             gir1.2-gtk-3.0 duplicity udev xvfb
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -57,7 +57,7 @@ jobs:
     name: packages
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -71,7 +71,7 @@ jobs:
           ./build_deb.sh -b
           ./build_rpm.sh -b
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: packages
           path: |
@@ -100,7 +100,7 @@ jobs:
     env:
       DEBIAN_FRONTEND: noninteractive
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: packages
 
