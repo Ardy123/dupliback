@@ -75,11 +75,15 @@ Add `-r` before `-b` to build a release, which drops the commit from the version
 
 The version is set only by `PROGRAM_BASE_VERSION` in `dupliback/src/settings.py`.
 While a version is in development, builds show it as `<version>-<short commit>`
-(for example `0.5.0-1a2b3c4`); a release is exactly `<version>`. To release 0.5.0:
+(for example `0.6.0-1a2b3c4`); a release is exactly `<version>`. To release 0.6.0:
 
-1. In `CHANGELOG.md`, change `## [0.5.0] - Unreleased` to the release date.
-2. Publish a GitHub release tagged `v0.5.0`. The release workflow runs the tests,
-   checks the tag matches the version and has a dated changelog entry, then builds
-   the release `.deb` and `.rpm` and attaches them to the release.
-3. Bump `PROGRAM_BASE_VERSION` to `0.6.0` and add a `## [0.6.0] - Unreleased`
-   section to `CHANGELOG.md`.
+1. In `CHANGELOG.md`, change `## [0.6.0] - Unreleased` to the release date and
+   end its compare link at `v0.6.0` instead of `HEAD`, and merge that.
+2. Publish a GitHub release tagged `v0.6.0`, targeting `master`. The release
+   workflow runs the tests, checks the tag matches the version and has a dated
+   changelog entry, then builds the release `.deb` and `.rpm` and attaches them
+   to the release.
+3. The release workflow then opens a pull request, "Start 0.7.0", that bumps
+   `PROGRAM_BASE_VERSION` and opens a `## [0.7.0] - Unreleased` section. Merge
+   it to start the next version; for a patch release instead, edit the version
+   in that pull request first.

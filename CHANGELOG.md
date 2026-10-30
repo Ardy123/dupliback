@@ -10,6 +10,10 @@ labelled `X.Y.Z-<short commit>`, releases are exactly `X.Y.Z` and are tagged
 
 ## [0.6.0] - Unreleased
 
+### Changed
+- After a release, the release workflow opens a pull request starting
+  the next version.
+
 ## [0.5.0] - 2026-10-29
 
 ### Security

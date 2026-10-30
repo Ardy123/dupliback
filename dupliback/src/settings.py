@@ -3,8 +3,8 @@ import subprocess
 import sys
 
 PROGRAM_NAME = 'dupli.back'
-# the only place the version is set. releases use it exactly; afterwards it
-# is bumped by hand to the next one.
+# the only place the version is set. releases use it exactly; afterwards the
+# release workflow opens a pull request bumping it to the next one.
 PROGRAM_BASE_VERSION = '0.6.0'
 # the oldest duplicity known to work (Debian 13's, tested in CI). It must
 # not exceed what the current Ubuntu LTS installs (26.04: 3.0.6). Packages

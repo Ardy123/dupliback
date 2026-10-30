@@ -6,6 +6,9 @@ on:
     branches: [master]
   # lets the release workflow run the same checks before building packages
   workflow_call:
+  # pull requests opened by the release workflow don't trigger pull_request,
+  # so it starts the tests on their branch itself
+  workflow_dispatch:
 
 permissions:
   contents: read
